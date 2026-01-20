@@ -17,6 +17,8 @@ const LoginView: React.FC<LoginViewProps> = ({ onLogin }) => {
   const [phone, setPhone] = useState('');
   const [referralCode, setReferralCode] = useState('');
 
+  const LOGO_URL = "https://is1-ssl.mzstatic.com/image/thumb/Purple211/v4/4a/6c/2e/4a6c2e37-122e-130f-2169-2810c9d94944/AppIcon-0-0-1x_U007emarketing-0-5-0-85-220.png/512x512bb.jpg";
+
   const handleTelegramAuth = async () => {
     setLoading(true);
     // Simulate Telegram Auth for demo purposes
@@ -87,13 +89,17 @@ const LoginView: React.FC<LoginViewProps> = ({ onLogin }) => {
       
       <div className="z-10 flex flex-col items-center text-center w-full max-w-sm">
         
-        {/* Updated Logo Section matching Green H design */}
-        <div className="w-28 h-28 bg-gradient-to-br from-[#22C55E] to-[#166534] rounded-[2.5rem] shadow-[0_20px_40px_-10px_rgba(34,197,94,0.4)] flex items-center justify-center mb-6 relative overflow-hidden border-4 border-white/10">
-           {/* Stylized H if image fails, or use actual image tag */}
-           <img src="logo.png" className="w-full h-full object-cover scale-110 mix-blend-overlay opacity-80" onError={(e) => {
-             e.currentTarget.style.display = 'none';
-             e.currentTarget.parentElement!.innerHTML = '<span class="text-7xl font-black text-white italic drop-shadow-md">H</span><div class="absolute top-4 right-4 w-4 h-4 bg-yellow-300 rounded-full shadow-lg"></div><div class="absolute bottom-6 left-6 w-3 h-3 bg-white/50 rounded-full"></div>';
-           }}/>
+        {/* Updated Logo Section using Telebirr Logo */}
+        <div className="w-28 h-28 bg-white rounded-[2.5rem] shadow-[0_20px_40px_-10px_rgba(34,197,94,0.4)] flex items-center justify-center mb-6 relative overflow-hidden border-4 border-white/10">
+           <img 
+             src={LOGO_URL} 
+             className="w-full h-full object-cover" 
+             onError={(e) => {
+               e.currentTarget.style.display = 'none';
+               e.currentTarget.parentElement!.classList.add('bg-gradient-to-br', 'from-[#22C55E]', 'to-[#166534]');
+               e.currentTarget.parentElement!.innerHTML = '<span class="text-7xl font-black text-white italic drop-shadow-md">H</span>';
+             }}
+           />
         </div>
 
         <h1 className="text-3xl font-black text-white italic tracking-tighter uppercase mb-2">

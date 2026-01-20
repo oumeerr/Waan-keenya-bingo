@@ -72,7 +72,7 @@ const PaymentProofView: React.FC = () => {
       - Keep answers concise (under 50 words usually).`;
 
       const response = await ai.models.generateContent({
-        model: 'gemini-2.5-flash',
+        model: 'gemini-3-flash-preview',
         contents: userMsg,
         config: {
           systemInstruction,

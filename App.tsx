@@ -308,6 +308,7 @@ const App: React.FC = () => {
 
       {isSidebarOpen && (
         <Sidebar 
+          user={user}
           currentLang={lang} 
           onLangChange={setLang} 
           onClose={() => setSidebarOpen(false)} 

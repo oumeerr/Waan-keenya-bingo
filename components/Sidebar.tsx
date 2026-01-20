@@ -1,8 +1,9 @@
 
 import React from 'react';
-import { View, Language } from '../types';
+import { View, Language, User } from '../types';
 
 interface SidebarProps {
+  user: User;
   onClose: () => void;
   onNavigate: (view: View) => void;
   currentLang: Language;
@@ -10,7 +11,7 @@ interface SidebarProps {
   onLogout: () => void;
 }
 
-const Sidebar: React.FC<SidebarProps> = ({ onClose, onNavigate, currentLang, onLangChange, onLogout }) => {
+const Sidebar: React.FC<SidebarProps> = ({ user, onClose, onNavigate, currentLang, onLangChange, onLogout }) => {
   return (
     <div className="fixed inset-0 z-50 flex">
       <div className="absolute inset-0 bg-black/80 backdrop-blur-sm transition-opacity" onClick={onClose}></div>
@@ -18,10 +19,12 @@ const Sidebar: React.FC<SidebarProps> = ({ onClose, onNavigate, currentLang, onL
         <div className="bg-[#121212] p-10 text-white relative overflow-hidden border-b border-hb-border">
           <div className="relative z-10 flex flex-col items-center">
             <div className="w-24 h-24 rounded-[2rem] bg-hb-surface p-1.5 mb-5 shadow-inner border border-hb-border">
-              <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=HB" className="w-full h-full rounded-[1.8rem]" alt="pfp" />
+              <img src={user.photo} className="w-full h-full rounded-[1.8rem] object-cover" alt="pfp" />
             </div>
-            <div className="font-black text-2xl tracking-tight italic uppercase text-hb-gold">Bingo Pro</div>
-            <div className="text-[11px] font-black uppercase opacity-60 tracking-widest mt-1">Master Tier Player</div>
+            <div className="font-black text-xl tracking-tight italic uppercase text-hb-gold truncate w-full text-center">{user.username}</div>
+            <div className="text-[11px] font-black uppercase opacity-60 tracking-widest mt-1 flex items-center gap-1">
+              <i className="fas fa-wallet text-[9px]"></i> {user.balance.toLocaleString()} ETB
+            </div>
           </div>
           <i className="fas fa-certificate absolute -right-8 -top-8 text-white/5 text-[14rem] rotate-45"></i>
         </div>
