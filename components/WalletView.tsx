@@ -1,7 +1,9 @@
+
 import React, { useState, useEffect } from 'react';
 import { User } from '../types';
 import { ETHIOPIAN_BANKS } from '../constants';
 import { APP_CONFIG } from '../config';
+import { supabase } from '../services/supabase';
 
 interface WalletViewProps {
   user: User;
@@ -13,36 +15,39 @@ type PaymentMethod = 'telebirr' | 'cbe' | 'ebirr' | 'kacha';
 interface MethodButtonProps {
   id: PaymentMethod;
   selected: boolean;
-  label: string;
-  theme: 'blue' | 'purple' | 'orange' | 'green';
   onClick: (id: PaymentMethod) => void;
-  children: React.ReactNode;
+  logoUrl: string;
 }
+
+// Hosted logos for Ethiopian Payment Providers (using high-availability public URLs)
+const LOGOS = {
+  telebirr: "https://is1-ssl.mzstatic.com/image/thumb/Purple211/v4/4a/6c/2e/4a6c2e37-122e-130f-2169-2810c9d94944/AppIcon-0-0-1x_U007emarketing-0-5-0-85-220.png/512x512bb.jpg",
+  cbe: "https://is1-ssl.mzstatic.com/image/thumb/Purple126/v4/f2/86/81/f286810c-300c-7703-e820-221614972e25/AppIcon-0-0-1x_U007emarketing-0-0-0-7-0-0-sRGB-0-0-0-GLES2_U002c0-512MB-85-220-0-0.png/512x512bb.jpg",
+  ebirr: "https://is1-ssl.mzstatic.com/image/thumb/Purple126/v4/7e/1c/64/7e1c641f-1339-930c-529d-473133874313/AppIcon-1x_U007emarketing-0-7-0-85-220.png/512x512bb.jpg",
+  kacha: "https://pbs.twimg.com/profile_images/1542866598379438081/Hj3x-k-9_400x400.jpg"
+};
 
 const MethodButton: React.FC<MethodButtonProps> = ({ 
   id, 
   selected, 
-  label, 
-  theme,
   onClick, 
-  children 
+  logoUrl 
 }) => {
-  const themeColors = {
-    blue: selected ? 'bg-hb-blue border-hb-blue text-white' : 'bg-blue-50 border-blue-100 text-hb-blue',
-    purple: selected ? 'bg-purple-600 border-purple-600 text-white' : 'bg-purple-50 border-purple-100 text-purple-600',
-    orange: selected ? 'bg-orange-500 border-orange-500 text-white' : 'bg-orange-50 border-orange-100 text-orange-600',
-    green: selected ? 'bg-emerald-600 border-emerald-600 text-white' : 'bg-emerald-50 border-emerald-100 text-emerald-600',
-  };
+  const isSelectedStyle = selected 
+    ? 'border-hb-gold ring-2 ring-hb-gold/50 bg-[#121212]' 
+    : 'border-hb-border bg-[#121212] hover:border-hb-muted opacity-60 hover:opacity-100';
 
   return (
     <button 
       onClick={() => onClick(id)}
-      className={`min-w-[80px] flex-1 flex flex-col items-center p-3 rounded-2xl border-2 transition-all group shadow-sm active:scale-95 ${themeColors[theme]} ${selected ? 'shadow-md' : 'hover:border-current'}`}
+      className={`relative aspect-square rounded-2xl border-2 transition-all group shadow-sm active:scale-95 flex items-center justify-center p-2 overflow-hidden ${isSelectedStyle}`}
     >
-      <div className={`w-full h-10 mb-2 flex items-center justify-center transition-transform group-active:scale-95 overflow-hidden rounded-lg bg-white/20`}>
-        {children}
-      </div>
-      <span className={`text-[10px] font-black uppercase ${selected ? 'text-white' : 'text-current opacity-80'}`}>{label}</span>
+      <img src={logoUrl} alt={id} className="w-full h-full object-contain rounded-xl" />
+      {selected && (
+        <div className="absolute top-1 right-1 w-4 h-4 bg-hb-gold rounded-full flex items-center justify-center shadow-md">
+           <i className="fas fa-check text-[8px] text-hb-blueblack"></i>
+        </div>
+      )}
     </button>
   );
 };
@@ -53,19 +58,48 @@ const WalletView: React.FC<WalletViewProps> = ({ user, setUser }) => {
   const [bank, setBank] = useState('');
   const [refId, setRefId] = useState('');
   const [selectedMethod, setSelectedMethod] = useState<PaymentMethod>('telebirr');
-  const [recipientPhone, setRecipientPhone] = useState('');
+  const [recipientUsername, setRecipientUsername] = useState('');
   const [accountNumber, setAccountNumber] = useState('');
   const [accountHolder, setAccountHolder] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [depositHistory, setDepositHistory] = useState<any[]>([]);
+  const [transferHistory, setTransferHistory] = useState<any[]>([]);
 
-  // Reset form when tab changes
   useEffect(() => {
     setAmount('');
     setRefId('');
     setBank('');
-    setRecipientPhone('');
+    setRecipientUsername('');
     setAccountNumber('');
     setAccountHolder('');
   }, [activeTab]);
+
+  useEffect(() => {
+    if (user.id === 'guest') return;
+
+    const fetchHistory = async () => {
+      if (activeTab === 'deposit') {
+        const { data } = await supabase
+          .from('transactions')
+          .select('*')
+          .eq('user_id', user.id)
+          .eq('type', 'deposit')
+          .order('created_at', { ascending: false })
+          .limit(5);
+        if (data) setDepositHistory(data);
+      } else if (activeTab === 'transfer') {
+        const { data } = await supabase
+          .from('transactions')
+          .select('*')
+          .eq('user_id', user.id)
+          .eq('type', 'transfer')
+          .order('created_at', { ascending: false })
+          .limit(5);
+        if (data) setTransferHistory(data);
+      }
+    };
+    fetchHistory();
+  }, [activeTab, user.id]);
 
   const getDepositNumbers = () => {
     if (selectedMethod === 'ebirr' || selectedMethod === 'kacha') {
@@ -85,110 +119,155 @@ const WalletView: React.FC<WalletViewProps> = ({ user, setUser }) => {
     return hour >= APP_CONFIG.WALLET.WITHDRAWAL_START_HOUR && hour < APP_CONFIG.WALLET.WITHDRAWAL_END_HOUR;
   };
 
-  const handleSubmitTransaction = () => {
-    if (!amount || !refId) {
-      alert("Please enter both amount and transaction reference ID.");
-      return;
-    }
-    const methodLabel = selectedMethod.toUpperCase();
-    alert(`Transaction Submitted!\nMethod: ${methodLabel}\nAmount: ${amount} ETB\nRef ID: ${refId}\n\nOur system is verifying your deposit...`);
-    setAmount('');
-    setRefId('');
-  };
-
-  const handleTransfer = () => {
+  const handleTransaction = async (type: 'deposit' | 'withdraw' | 'transfer') => {
     const val = parseFloat(amount);
-    if (!val || val <= 0) return alert("Invalid transfer amount");
-    if (!recipientPhone) return alert("Recipient number required");
     
-    const fee = val * APP_CONFIG.WALLET.TRANSFER_FEE_PERCENT;
-    const totalDeduction = val + fee;
+    // Basic Client-Side Validation
+    if (!val || isNaN(val)) return alert("Please enter a valid amount");
 
-    if (user.balance < totalDeduction) {
-      alert(`Insufficient Funds!\n\nTransfer: ${val} ETB\nFee (5%): ${fee} ETB\nTotal Needed: ${totalDeduction} ETB\n\nBalance: ${user.balance} ETB`);
-      return;
+    if (type === 'deposit') {
+      if (val < 30) return alert("Minimum deposit is 30 ETB");
+      if (!refId) return alert("Transaction Reference ID is required");
+    }
+    
+    if (type === 'withdraw') {
+      if (val < 100) return alert("Minimum withdrawal is 100 ETB");
+      if (!bank || !accountNumber || !accountHolder) return alert("Please complete all bank details");
     }
 
-    // Process Transfer
-    const confirmMsg = `Confirm P2P Transfer?\n\nTo: ${recipientPhone}\nAmount: ${val} ETB\nFee (5%): ${fee} ETB\n\nTotal Deduction: ${totalDeduction} ETB`;
-    if (window.confirm(confirmMsg)) {
-        setUser(prev => ({ ...prev, balance: prev.balance - totalDeduction }));
-        alert("Transfer Successful!");
-        setAmount('');
-        setRecipientPhone('');
+    if (type === 'transfer') {
+      if (val < 100) return alert("Minimum transfer is 100 ETB");
+      if (!recipientUsername) return alert("Recipient username required");
+    }
+
+    setLoading(true);
+
+    try {
+      // Prepare Metadata based on type
+      const metadata = type === 'withdraw' 
+        ? { bank, accountNumber, accountHolder } 
+        : type === 'deposit' 
+          ? { method: selectedMethod, refId } 
+          : {};
+
+      const { data, error } = await supabase.rpc('process_transaction', {
+        p_type: type,
+        p_amount: val,
+        p_recipient_username: type === 'transfer' ? recipientUsername : null,
+        p_metadata: metadata
+      });
+
+      if (error) throw error;
+
+      alert(data.message || "Transaction processed successfully");
+
+      // Optimistic UI Updates
+      if (type === 'withdraw') {
+        setUser(prev => ({ ...prev, balance: prev.balance - val }));
+      } else if (type === 'transfer') {
+        const fee = val * APP_CONFIG.WALLET.TRANSFER_FEE_PERCENT;
+        setUser(prev => ({ ...prev, balance: prev.balance - (val + fee) }));
+      }
+
+      // Refresh Histories
+      if (user.id !== 'guest') {
+         if (type === 'deposit') {
+           const { data: newData } = await supabase
+            .from('transactions')
+            .select('*')
+            .eq('user_id', user.id)
+            .eq('type', 'deposit')
+            .order('created_at', { ascending: false })
+            .limit(5);
+           if (newData) setDepositHistory(newData);
+         } else if (type === 'transfer') {
+           const { data: newData } = await supabase
+            .from('transactions')
+            .select('*')
+            .eq('user_id', user.id)
+            .eq('type', 'transfer')
+            .order('created_at', { ascending: false })
+            .limit(5);
+           if (newData) setTransferHistory(newData);
+         }
+      }
+
+      // Reset Forms
+      setAmount('');
+      setRefId('');
+      setRecipientUsername('');
+      setAccountNumber('');
+      setAccountHolder('');
+
+    } catch (error: any) {
+      console.error("Transaction Error:", error);
+      alert(error.message || "Transaction failed");
+    } finally {
+      setLoading(false);
     }
   };
 
-  // High quality Telebirr logo
-  const telebirrLogoUrl = "https://th.bing.com/th/id/OIP.4yM-zK_zR0Y9y3zKz9z9zAHaHa?rs=1&pid=ImgDetMain"; 
-
-  // Calculations for Transfer View
   const transferValue = parseFloat(amount) || 0;
   const transferFee = transferValue * APP_CONFIG.WALLET.TRANSFER_FEE_PERCENT;
   const totalTransferDeduction = transferValue + transferFee;
 
   return (
     <div className="p-5">
-      <div className="bg-gradient-to-br from-[#2563EB] to-[#0F172A] p-8 rounded-[24px] text-white mb-8 shadow-xl relative overflow-hidden">
+      <div className="bg-gradient-to-br from-[#1A1A1A] to-black border border-hb-border p-8 rounded-[24px] text-white mb-8 shadow-xl relative overflow-hidden">
         <div className="relative z-10">
-          <p className="text-[11px] font-bold uppercase opacity-60 mb-1.5 tracking-widest">Available Balance</p>
-          <h2 className="text-[32px] font-black mb-4 text-white drop-shadow-sm leading-none">
-            {user.balance.toLocaleString()} <span className="text-[16px] opacity-70 font-bold">ETB</span>
+          <p className="text-[11px] font-bold uppercase opacity-60 mb-1.5 tracking-widest text-hb-muted">Available Balance</p>
+          <h2 className="text-[32px] font-black mb-4 text-hb-gold drop-shadow-sm leading-none">
+            {user.balance.toLocaleString()} <span className="text-[16px] opacity-70 font-bold text-white">ETB</span>
           </h2>
           <div className="flex gap-2">
-            <div className="px-3 py-1 bg-white/10 rounded-lg text-[10px] font-bold uppercase border border-white/5">Secured Vault</div>
-            <div className="px-3 py-1 bg-white/10 rounded-lg text-[10px] font-bold uppercase border border-white/5">Verified Player</div>
+            <div className="px-3 py-1 bg-hb-gold/10 rounded-lg text-[10px] font-bold uppercase border border-hb-gold/20 text-hb-gold">Secured Vault</div>
+            <div className="px-3 py-1 bg-white/5 rounded-lg text-[10px] font-bold uppercase border border-white/5 text-hb-muted">Verified Player</div>
           </div>
         </div>
-        <i className="fas fa-wallet absolute -right-6 -bottom-6 text-white/5 text-[9rem] -rotate-12"></i>
+        <i className="fas fa-wallet absolute -right-6 -bottom-6 text-hb-gold/10 text-[9rem] -rotate-12"></i>
       </div>
 
-      <div className="flex bg-hb-border/50 p-1.5 rounded-2xl mb-8">
+      <div className="flex bg-hb-surface border border-hb-border p-1.5 rounded-2xl mb-8">
         {['deposit', 'withdraw', 'transfer'].map(tab => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab as any)}
-            className={`flex-1 py-3 rounded-xl text-[11px] font-bold uppercase transition-all ${activeTab === tab ? 'bg-white text-hb-blue shadow-md' : 'text-hb-muted'}`}
+            className={`flex-1 py-3 rounded-xl text-[11px] font-bold uppercase transition-all ${activeTab === tab ? 'bg-hb-gold text-hb-blueblack shadow-md' : 'text-hb-muted hover:text-white'}`}
           >
-            {tab === 'deposit' ? 'Deposit' : tab === 'withdraw' ? 'Withdraw' : 'Transfer'}
+            {tab === 'deposit' ? 'Add Money' : tab === 'withdraw' ? 'Get Cash' : 'Send Money'}
           </button>
         ))}
       </div>
 
       {activeTab === 'deposit' && (
         <div className="space-y-6">
-          <div className="grid grid-cols-4 gap-2">
-            <MethodButton id="telebirr" selected={selectedMethod === 'telebirr'} theme="blue" label="Telebirr" onClick={setSelectedMethod}>
-              <img src={telebirrLogoUrl} alt="Telebirr" className="h-full object-contain mix-blend-multiply scale-110" />
-            </MethodButton>
-            
-            <MethodButton id="cbe" selected={selectedMethod === 'cbe'} theme="purple" label="CBE Birr" onClick={setSelectedMethod}>
-              <span className="font-black text-[12px] tracking-tighter uppercase leading-none text-center">CBE</span>
-            </MethodButton>
-
-            <MethodButton id="ebirr" selected={selectedMethod === 'ebirr'} theme="orange" label="E-Birr" onClick={setSelectedMethod}>
-                 <span className="font-black text-[10px] tracking-tighter uppercase leading-none text-center">E-BIRR</span>
-            </MethodButton>
-
-            <MethodButton id="kacha" selected={selectedMethod === 'kacha'} theme="green" label="Kacha" onClick={setSelectedMethod}>
-                 <span className="font-black text-[10px] tracking-tighter uppercase leading-none text-center">KACHA</span>
-            </MethodButton>
+          <div className="flex flex-col gap-2">
+            <span className="text-[10px] font-black uppercase text-hb-muted ml-1 tracking-widest">Select Provider</span>
+            <div className="grid grid-cols-4 gap-3">
+              <MethodButton id="telebirr" selected={selectedMethod === 'telebirr'} logoUrl={LOGOS.telebirr} onClick={setSelectedMethod} />
+              <MethodButton id="cbe" selected={selectedMethod === 'cbe'} logoUrl={LOGOS.cbe} onClick={setSelectedMethod} />
+              <MethodButton id="ebirr" selected={selectedMethod === 'ebirr'} logoUrl={LOGOS.ebirr} onClick={setSelectedMethod} />
+              <MethodButton id="kacha" selected={selectedMethod === 'kacha'} logoUrl={LOGOS.kacha} onClick={setSelectedMethod} />
+            </div>
           </div>
 
-          <div className="bg-white p-7 rounded-[24px] border border-hb-border shadow-sm space-y-6">
+          <div className="bg-hb-surface p-7 rounded-[24px] border border-hb-border shadow-sm space-y-6">
             <div className="text-center space-y-3">
-              <h3 className="font-bold text-hb-navy text-[16px] uppercase tracking-tight">
-                Deposit Funds
-              </h3>
-              <p className="text-[12px] text-hb-muted font-medium">Transfer your stake to the following merchant account:</p>
+              <div className="flex items-center justify-center gap-2">
+                <img src={LOGOS[selectedMethod]} className="w-6 h-6 rounded-md object-cover" alt="Selected" />
+                <h3 className="font-bold text-white text-[16px] uppercase tracking-tight">
+                  Transfer to {selectedMethod === 'cbe' ? 'CBE' : selectedMethod.charAt(0).toUpperCase() + selectedMethod.slice(1)}
+                </h3>
+              </div>
+              <p className="text-[12px] text-hb-muted font-medium">Send (Min 30 ETB) to merchant:</p>
               
               <div className="space-y-3">
                 {getDepositNumbers().map((num) => (
-                  <div key={num} className="bg-hb-bg border border-hb-border py-4 px-6 rounded-2xl flex items-center justify-between group hover:border-hb-blue/30 transition-colors">
-                    <span className="text-[18px] font-black text-hb-navy tracking-wider font-mono">{num}</span>
+                  <div key={num} className="bg-[#121212] border border-hb-border py-4 px-6 rounded-2xl flex items-center justify-between group hover:border-hb-gold/30 transition-colors">
+                    <span className="text-[18px] font-black text-hb-gold tracking-wider font-mono">{num}</span>
                     <button 
                       onClick={() => handleCopy(num)}
-                      className="w-10 h-10 bg-hb-blue/10 text-hb-blue rounded-xl flex items-center justify-center hover:bg-hb-blue hover:text-white transition-all active:scale-90 shadow-sm"
+                      className="w-10 h-10 bg-hb-gold/10 text-hb-gold rounded-xl flex items-center justify-center hover:bg-hb-gold hover:text-hb-blueblack transition-all active:scale-90 shadow-sm"
                     >
                       <i className="fas fa-copy"></i>
                     </button>
@@ -198,11 +277,11 @@ const WalletView: React.FC<WalletViewProps> = ({ user, setUser }) => {
             </div>
 
             <div className="space-y-4 pt-4 border-t border-hb-border/50">
-              <h3 className="font-bold text-hb-navy text-[16px] uppercase tracking-tight text-center">
-                Verify Transaction
+              <h3 className="font-bold text-white text-[16px] uppercase tracking-tight text-center">
+                Verify Payment
               </h3>
               <div className="space-y-1.5">
-                <label className="text-[12px] font-bold text-hb-muted ml-1 uppercase tracking-tighter italic">Deposit Amount (ETB)</label>
+                <label className="text-[12px] font-bold text-hb-muted ml-1 uppercase tracking-tighter italic">Amount Sent (Min 30 ETB)</label>
                 <input 
                   type="number" 
                   placeholder="e.g. 500"
@@ -213,7 +292,7 @@ const WalletView: React.FC<WalletViewProps> = ({ user, setUser }) => {
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-[12px] font-bold text-hb-muted ml-1 uppercase tracking-tighter italic">Transaction Reference ID</label>
+                <label className="text-[12px] font-bold text-hb-muted ml-1 uppercase tracking-tighter italic">Transaction ID</label>
                 <input 
                   type="text" 
                   placeholder="Ref/Txn code"
@@ -224,36 +303,54 @@ const WalletView: React.FC<WalletViewProps> = ({ user, setUser }) => {
               </div>
 
               <button 
-                onClick={handleSubmitTransaction}
-                className="w-full h-[54px] bg-hb-blue text-white font-bold rounded-xl text-[14px] uppercase shadow-lg active:scale-[0.98] mt-4 flex items-center justify-center gap-2 transition-all hover:bg-hb-navy"
+                onClick={() => handleTransaction('deposit')}
+                disabled={loading}
+                className="w-full h-[54px] bg-hb-gold text-hb-blueblack font-bold rounded-xl text-[14px] uppercase shadow-lg active:scale-[0.98] mt-4 flex items-center justify-center gap-2 transition-all hover:brightness-110 disabled:opacity-50"
               >
-                <i className="fas fa-check-circle"></i>
-                Submit Deposit
+                {loading ? <i className="fas fa-spinner fa-spin"></i> : <i className="fas fa-check-circle"></i>}
+                {loading ? 'Verifying...' : 'Submit Deposit'}
               </button>
             </div>
+          </div>
 
-            <div className="bg-hb-bg/50 p-4 rounded-2xl border border-dashed border-hb-border">
-              <div className="flex items-start gap-3">
-                <i className="fas fa-clock text-hb-blue mt-0.5"></i>
-                <p className="text-[11px] text-hb-muted font-medium italic leading-relaxed">
-                  Our automated system verifies transactions in real-time. Balance updates usually within <strong>5-10 minutes</strong>.
-                </p>
+          {/* Deposit History Section */}
+          {depositHistory.length > 0 && (
+            <div className="mt-6 animate-in fade-in slide-in-from-bottom-2">
+              <h3 className="text-[12px] font-bold text-hb-muted uppercase tracking-widest mb-3 ml-2">Recent Deposits</h3>
+              <div className="space-y-2">
+                {depositHistory.map((tx) => (
+                  <div key={tx.id} className="bg-white p-3 rounded-xl border border-hb-border shadow-sm flex justify-between items-center hover:bg-blue-50 transition-colors">
+                     <div>
+                       <div className="text-[10px] font-black text-hb-blueblack uppercase tracking-tight">
+                         {new Date(tx.created_at).toLocaleDateString()}
+                       </div>
+                       <div className="text-[9px] font-bold text-hb-muted uppercase flex items-center gap-1">
+                          {tx.metadata?.method || 'Direct'} 
+                          <span className="opacity-50">•</span> 
+                          <span className={`${tx.status === 'completed' ? 'text-green-600' : tx.status === 'failed' ? 'text-red-500' : 'text-orange-500'}`}>{tx.status}</span>
+                       </div>
+                     </div>
+                     <div className="text-[12px] font-black text-hb-blueblack tracking-tight">
+                       +{tx.amount} ETB
+                     </div>
+                  </div>
+                ))}
               </div>
             </div>
-          </div>
+          )}
         </div>
       )}
 
       {activeTab === 'withdraw' && (
-        <div className="bg-white p-7 rounded-[24px] border border-hb-border shadow-sm space-y-6">
+        <div className="bg-hb-surface p-7 rounded-[24px] border border-hb-border shadow-sm space-y-6">
            <div className="text-center">
-              <h3 className="font-bold text-hb-navy text-[18px] mb-1 italic">Withdraw Funds</h3>
+              <h3 className="font-bold text-white text-[18px] mb-1 italic">Get Cash Out</h3>
               <p className="text-[12px] text-hb-muted font-medium">Window: {APP_CONFIG.WALLET.WITHDRAWAL_START_HOUR} AM to {APP_CONFIG.WALLET.WITHDRAWAL_END_HOUR - 12} PM.</p>
            </div>
 
            <div className="space-y-4">
               <div className="space-y-1.5">
-                <label className="text-[13px] font-bold text-hb-muted ml-1">Withdrawal Amount (Min {APP_CONFIG.WALLET.MIN_WITHDRAWAL_ETB})</label>
+                <label className="text-[13px] font-bold text-hb-muted ml-1">Amount to Withdraw (Min {APP_CONFIG.WALLET.MIN_WITHDRAWAL_ETB})</label>
                 <input 
                   type="number" 
                   value={amount}
@@ -264,10 +361,10 @@ const WalletView: React.FC<WalletViewProps> = ({ user, setUser }) => {
               </div>
               
               <div className="space-y-1.5">
-                <label className="text-[13px] font-bold text-hb-muted ml-1">Withdrawal Method</label>
+                <label className="text-[13px] font-bold text-hb-muted ml-1">Payment Method</label>
                 <select 
                   className="w-full input-human appearance-none bg-no-repeat bg-[right_16px_center]"
-                  style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' fill=\'none\' viewBox=\'0 0 24 24\' stroke=\'%2364748B\'%3E%3Cpath stroke-linecap=\'round\' stroke-linejoin=\'round\' stroke-width=\'2\' d=\'M19 9l-7 7-7-7\'%3E%3C/path%3E%3C/svg%3E")', backgroundSize: '20px' }}
+                  style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' fill=\'none\' viewBox=\'0 0 24 24\' stroke=\'%23A0A0A0\'%3E%3Cpath stroke-linecap=\'round\' stroke-linejoin=\'round\' stroke-width=\'2\' d=\'M19 9l-7 7-7-7\'%3E%3C/path%3E%3C/svg%3E")', backgroundSize: '20px' }}
                   value={bank} onChange={e => setBank(e.target.value)}
                 >
                   <option value="">Select Bank/Wallet...</option>
@@ -287,7 +384,7 @@ const WalletView: React.FC<WalletViewProps> = ({ user, setUser }) => {
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-[13px] font-bold text-hb-muted ml-1">Account Holder Name</label>
+                <label className="text-[13px] font-bold text-hb-muted ml-1">Full Name</label>
                 <input 
                   type="text" 
                   value={accountHolder}
@@ -298,10 +395,12 @@ const WalletView: React.FC<WalletViewProps> = ({ user, setUser }) => {
               </div>
 
               <button 
-                disabled={!isWithdrawActive()}
-                className="w-full h-[54px] bg-hb-blue text-white font-bold rounded-xl text-[14px] uppercase shadow-lg active:scale-[0.98] disabled:opacity-40 transition-all mt-4"
+                onClick={() => handleTransaction('withdraw')}
+                disabled={!isWithdrawActive() || loading}
+                className="w-full h-[54px] bg-hb-gold text-hb-blueblack font-bold rounded-xl text-[14px] uppercase shadow-lg active:scale-[0.98] disabled:opacity-40 transition-all mt-4 flex items-center justify-center gap-2"
               >
-                Request Withdrawal
+                {loading && <i className="fas fa-spinner fa-spin"></i>}
+                Request Cash Out
               </button>
               {!isWithdrawActive() && (
                 <p className="text-[10px] text-red-500 font-bold text-center italic">Withdrawals paused. Resume at {APP_CONFIG.WALLET.WITHDRAWAL_START_HOUR} AM.</p>
@@ -311,25 +410,25 @@ const WalletView: React.FC<WalletViewProps> = ({ user, setUser }) => {
       )}
 
       {activeTab === 'transfer' && (
-        <div className="bg-white p-7 rounded-[24px] border border-hb-border shadow-sm space-y-6">
+        <div className="bg-hb-surface p-7 rounded-[24px] border border-hb-border shadow-sm space-y-6">
            <div className="text-center">
-              <h3 className="font-bold text-hb-navy text-[18px] mb-1 italic">P2P Transfer</h3>
-              <p className="text-[12px] text-hb-muted font-medium">Move funds to another player's account.</p>
+              <h3 className="font-bold text-white text-[18px] mb-1 italic">Send Money</h3>
+              <p className="text-[12px] text-hb-muted font-medium">Move funds to another player's account (Min 100 ETB).</p>
            </div>
 
            <div className="space-y-4">
               <div className="space-y-1.5">
-                <label className="text-[13px] font-bold text-hb-muted ml-1">Recipient Mobile</label>
+                <label className="text-[13px] font-bold text-hb-muted ml-1">Recipient Username</label>
                 <input 
-                  type="tel" 
-                  value={recipientPhone}
-                  onChange={(e) => setRecipientPhone(e.target.value)}
-                  placeholder="09..."
+                  type="text"
+                  value={recipientUsername}
+                  onChange={(e) => setRecipientUsername(e.target.value)}
+                  placeholder="e.g. BingoKing"
                   className="w-full input-human"
                 />
               </div>
               <div className="space-y-1.5">
-                <label className="text-[13px] font-bold text-hb-muted ml-1">Transfer Amount</label>
+                <label className="text-[13px] font-bold text-hb-muted ml-1">Amount to Send</label>
                 <input 
                   type="number" 
                   value={amount}
@@ -340,16 +439,16 @@ const WalletView: React.FC<WalletViewProps> = ({ user, setUser }) => {
               </div>
 
               {transferValue > 0 && (
-                <div className="bg-hb-bg p-4 rounded-xl border border-hb-border text-[12px] animate-in fade-in slide-in-from-top-1">
+                <div className="bg-[#121212] p-4 rounded-xl border border-hb-border text-[12px] animate-in fade-in slide-in-from-top-1">
                   <div className="flex justify-between mb-2">
                     <span className="text-hb-muted font-bold">Transfer Amount</span>
-                    <span className="font-bold">{transferValue.toFixed(2)} ETB</span>
+                    <span className="font-bold text-white">{transferValue.toFixed(2)} ETB</span>
                   </div>
                   <div className="flex justify-between mb-2 text-hb-gold">
                     <span className="font-bold">Fee (5%)</span>
                     <span className="font-bold">+{transferFee.toFixed(2)} ETB</span>
                   </div>
-                  <div className="flex justify-between pt-3 border-t border-hb-border/50 font-black text-hb-navy text-[14px]">
+                  <div className="flex justify-between pt-3 border-t border-hb-border/50 font-black text-white text-[14px]">
                     <span>Total Deductible</span>
                     <span>{totalTransferDeduction.toFixed(2)} ETB</span>
                   </div>
@@ -357,13 +456,40 @@ const WalletView: React.FC<WalletViewProps> = ({ user, setUser }) => {
               )}
 
               <button 
-                onClick={handleTransfer}
-                disabled={user.balance < totalTransferDeduction}
-                className="w-full h-[54px] bg-hb-navy text-white font-bold rounded-xl text-[14px] uppercase shadow-lg active:scale-[0.98] transition-all mt-4 disabled:opacity-50 disabled:cursor-not-allowed"
+                onClick={() => handleTransaction('transfer')}
+                disabled={user.balance < totalTransferDeduction || loading}
+                className="w-full h-[54px] bg-hb-gold text-hb-blueblack font-bold rounded-xl text-[14px] uppercase shadow-lg active:scale-[0.98] transition-all mt-4 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
-                {user.balance < totalTransferDeduction ? 'Insufficient Funds' : 'Transfer Funds'}
+                {loading && <i className="fas fa-spinner fa-spin"></i>}
+                {user.balance < totalTransferDeduction ? 'Insufficient Funds' : 'Send Money'}
               </button>
            </div>
+           
+           {/* Transfer History Section */}
+           {transferHistory.length > 0 && (
+            <div className="mt-6 animate-in fade-in slide-in-from-bottom-2">
+              <h3 className="text-[12px] font-bold text-hb-muted uppercase tracking-widest mb-3 ml-2">Recent Transfers</h3>
+              <div className="space-y-2">
+                {transferHistory.map((tx) => (
+                  <div key={tx.id} className="bg-white p-3 rounded-xl border border-hb-border shadow-sm flex justify-between items-center hover:bg-blue-50 transition-colors">
+                     <div>
+                       <div className="text-[10px] font-black text-hb-blueblack uppercase tracking-tight">
+                         {new Date(tx.created_at).toLocaleDateString()}
+                       </div>
+                       <div className="text-[9px] font-bold text-hb-muted uppercase flex items-center gap-1">
+                          To: {tx.recipient_username || 'Unknown'} 
+                          <span className="opacity-50">•</span> 
+                          <span className={`${tx.status === 'completed' ? 'text-green-600' : 'text-orange-500'}`}>{tx.status}</span>
+                       </div>
+                     </div>
+                     <div className="text-[12px] font-black text-hb-blueblack tracking-tight">
+                       -{tx.amount} ETB
+                     </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+           )}
         </div>
       )}
     </div>

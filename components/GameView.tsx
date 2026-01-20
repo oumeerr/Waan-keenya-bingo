@@ -3,6 +3,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { User } from '../types';
 import { generateCard, generateMiniCard } from '../constants';
 import { APP_CONFIG } from '../config';
+import { supabase } from '../services/supabase';
 
 interface GameViewProps {
   cardIds: number[];
@@ -78,7 +79,7 @@ const GameView: React.FC<GameViewProps> = ({ cardIds, betAmount, mode, user, set
   const winningCardsList = cardIds.filter(id => checkWinForCard(id, markedByCard[id]));
   const isAnyWinning = winningCardsList.length > 0;
 
-  const handleCallBingo = useCallback(() => {
+  const handleCallBingo = useCallback(async () => {
     if (callInterval.current) clearInterval(callInterval.current);
     
     if (!isAnyWinning) {
@@ -91,12 +92,28 @@ const GameView: React.FC<GameViewProps> = ({ cardIds, betAmount, mode, user, set
     
     const totalStake = betAmount * 2;
     const winAmount = Math.floor(totalStake * (1 - APP_CONFIG.GAME.HOUSE_FEE_PERCENT));
+    const newBalance = user.balance + winAmount;
+    const newWins = user.wins + 1;
+
     setWinnings(winAmount);
     setWinningCardIds(winningCardsList);
     setWinner(user.username);
-    setUser(prev => ({ ...prev, balance: prev.balance + winAmount }));
+    
+    // Optimistic Update
+    setUser(prev => ({ ...prev, balance: newBalance, wins: newWins }));
+
+    // Supabase Update
+    if (user.id !== 'guest') {
+       const { error } = await supabase
+        .from('profiles')
+        .update({ balance: newBalance, wins: newWins })
+        .eq('id', user.id);
+        
+       if (error) console.error("Failed to update winnings in DB:", error);
+    }
+
     setGameState('finished');
-  }, [isAnyWinning, betAmount, winningCardsList, user.username, setUser]);
+  }, [isAnyWinning, betAmount, winningCardsList, user.username, setUser, user.balance, user.wins, user.id]);
 
   // Matchmaking Timer Sync - Ensures game starts NO MATTER WHAT
   useEffect(() => {
@@ -308,7 +325,7 @@ const GameView: React.FC<GameViewProps> = ({ cardIds, betAmount, mode, user, set
                   </div>
                   {isWinning && (
                     <div className="absolute inset-0 bg-hb-gold/15 flex items-center justify-center pointer-events-none backdrop-blur-[1px] animate-pulse">
-                       <div className="bg-hb-gold text-white text-[12px] font-black px-4 py-1.5 rounded-full shadow-2xl uppercase tracking-widest border-2 border-white/20">
+                       <div className="bg-hb-gold text-hb-blueblack text-[12px] font-black px-4 py-1.5 rounded-full shadow-2xl uppercase tracking-widest border-2 border-hb-blueblack/20">
                          WINNER!
                        </div>
                     </div>
@@ -322,7 +339,7 @@ const GameView: React.FC<GameViewProps> = ({ cardIds, betAmount, mode, user, set
             <button 
               onClick={handleCallBingo}
               disabled={isAutoPlay && isAnyWinning}
-              className={`w-full h-[76px] rounded-[28px] font-black text-[26px] shadow-2xl transition-all uppercase tracking-tight border-b-[6px] flex items-center justify-center gap-4 active:scale-95 bg-hb-gold border-[#d97706] text-white hover:brightness-110 ${isAutoPlay && isAnyWinning ? 'opacity-50 grayscale cursor-not-allowed' : ''}`}
+              className={`w-full h-[76px] rounded-[28px] font-black text-[26px] shadow-2xl transition-all uppercase tracking-tight border-b-[6px] flex items-center justify-center gap-4 active:scale-95 bg-hb-gold border-[#d97706] text-hb-blueblack hover:brightness-110 ${isAutoPlay && isAnyWinning ? 'opacity-50 grayscale cursor-not-allowed' : ''}`}
             >
               <i className="fas fa-crown text-[20px]"></i>
               {isAutoPlay && isAnyWinning ? 'Processing...' : 'BINGO!'}
@@ -354,7 +371,7 @@ const GameView: React.FC<GameViewProps> = ({ cardIds, betAmount, mode, user, set
                  <span className="text-[14px] font-bold text-white/60">Winning Cartellas:</span>
                  <div className="flex gap-2">
                     {winningCardIds.length > 0 ? winningCardIds.map(id => (
-                      <span key={id} className="bg-hb-gold text-white text-[12px] font-black px-3 py-1.5 rounded-xl shadow-lg">#{id}</span>
+                      <span key={id} className="bg-hb-gold text-hb-blueblack text-[12px] font-black px-3 py-1.5 rounded-xl shadow-lg">#{id}</span>
                     )) : <span className="text-red-400 font-black text-[12px] uppercase tracking-widest">NONE</span>}
                  </div>
               </div>

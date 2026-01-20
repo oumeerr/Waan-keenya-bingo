@@ -1,5 +1,5 @@
 {
-  "name": "hulumbingo-frontend",
+  "name": "hulumbingo",
   "private": true,
   "version": "0.0.0",
   "type": "module",
@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@google/genai": "^1.37.0",
+    "@supabase/supabase-js": "2",
     "react": "^19.2.3",
     "react-dom": "^19.2.3"
   },

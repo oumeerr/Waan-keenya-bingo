@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { View, Language } from '../types';
 
@@ -6,69 +7,70 @@ interface SidebarProps {
   onNavigate: (view: View) => void;
   currentLang: Language;
   onLangChange: (lang: Language) => void;
+  onLogout: () => void;
 }
 
-const Sidebar: React.FC<SidebarProps> = ({ onClose, onNavigate, currentLang, onLangChange }) => {
+const Sidebar: React.FC<SidebarProps> = ({ onClose, onNavigate, currentLang, onLangChange, onLogout }) => {
   return (
     <div className="fixed inset-0 z-50 flex">
-      <div className="absolute inset-0 bg-hb-blueblack/60 backdrop-blur-sm transition-opacity" onClick={onClose}></div>
-      <div className="relative w-80 h-full bg-hb-bg shadow-[25px_0_50px_-12px_rgba(0,0,0,0.15)] flex flex-col slide-in-left">
-        <div className="bg-hb-brand-grey p-10 text-white relative overflow-hidden">
+      <div className="absolute inset-0 bg-black/80 backdrop-blur-sm transition-opacity" onClick={onClose}></div>
+      <div className="relative w-80 h-full bg-hb-surface shadow-[25px_0_50px_-12px_rgba(0,0,0,0.5)] flex flex-col slide-in-left border-r border-hb-border">
+        <div className="bg-[#121212] p-10 text-white relative overflow-hidden border-b border-hb-border">
           <div className="relative z-10 flex flex-col items-center">
-            <div className="w-24 h-24 rounded-[2rem] bg-white/10 p-1.5 mb-5 shadow-inner border border-white/5">
+            <div className="w-24 h-24 rounded-[2rem] bg-hb-surface p-1.5 mb-5 shadow-inner border border-hb-border">
               <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=HB" className="w-full h-full rounded-[1.8rem]" alt="pfp" />
             </div>
-            <div className="font-black text-2xl tracking-tight italic uppercase">Bingo Pro</div>
+            <div className="font-black text-2xl tracking-tight italic uppercase text-hb-gold">Bingo Pro</div>
             <div className="text-[11px] font-black uppercase opacity-60 tracking-widest mt-1">Master Tier Player</div>
           </div>
           <i className="fas fa-certificate absolute -right-8 -top-8 text-white/5 text-[14rem] rotate-45"></i>
         </div>
 
-        <div className="flex-1 overflow-y-auto py-10 px-8 no-scrollbar">
+        <div className="flex-1 overflow-y-auto py-10 px-8 no-scrollbar bg-hb-surface">
           <div className="mb-10">
             <h4 className="text-[11px] font-black text-hb-muted uppercase tracking-[0.2em] mb-6">Navigation</h4>
             <div className="space-y-2">
               <SidebarLink 
                 icon="fa-home" 
-                color="text-hb-blue" 
-                bg="bg-blue-50 group-hover:bg-hb-blue" 
+                color="text-white" 
+                bg="bg-[#121212] group-hover:bg-hb-gold group-hover:text-hb-blueblack" 
                 label="Dashboard Home" 
                 onClick={() => onNavigate('home')} 
               />
               <SidebarLink 
                 icon="fa-th" 
-                color="text-hb-gold" 
-                bg="bg-orange-50 group-hover:bg-hb-gold" 
+                color="text-white" 
+                bg="bg-[#121212] group-hover:bg-hb-gold group-hover:text-hb-blueblack" 
                 label="Card Gallery" 
                 onClick={() => onNavigate('all-cards')} 
               />
+               <SidebarLink 
+                icon="fa-file-invoice-dollar" 
+                color="text-white" 
+                bg="bg-[#121212] group-hover:bg-hb-gold group-hover:text-hb-blueblack" 
+                label="Payment Proof" 
+                onClick={() => onNavigate('payment-proof')} 
+              />
               <SidebarLink 
                 icon="fa-user-circle" 
-                color="text-hb-emerald" 
-                bg="bg-emerald-50 group-hover:bg-hb-emerald" 
+                color="text-white" 
+                bg="bg-[#121212] group-hover:bg-hb-gold group-hover:text-hb-blueblack" 
                 label="Profile Settings" 
                 onClick={() => onNavigate('profile')} 
               />
               <SidebarLink 
                 icon="fa-bullhorn" 
-                color="text-hb-gold" 
-                bg="bg-orange-50 group-hover:bg-hb-gold" 
+                color="text-white" 
+                bg="bg-[#121212] group-hover:bg-hb-gold group-hover:text-hb-blueblack" 
                 label="Promo Creator" 
                 onClick={() => onNavigate('promo')} 
               />
                <SidebarLink 
                 icon="fa-cog" 
-                color="text-purple-600" 
-                bg="bg-purple-50 group-hover:bg-purple-600" 
+                color="text-white" 
+                bg="bg-[#121212] group-hover:bg-hb-gold group-hover:text-hb-blueblack" 
                 label="App Settings" 
                 onClick={() => onNavigate('settings')} 
-              />
-              <SidebarLink 
-                icon="fa-headset" 
-                color="text-hb-navy" 
-                bg="bg-slate-200 group-hover:bg-hb-navy" 
-                label="Support Center" 
-                onClick={() => alert("Connecting to Support...")} 
               />
             </div>
           </div>
@@ -84,20 +86,21 @@ const Sidebar: React.FC<SidebarProps> = ({ onClose, onNavigate, currentLang, onL
           </div>
         </div>
 
-        <div className="p-8 border-t border-gray-100 flex flex-col gap-4 bg-slate-50/50">
+        <div className="p-8 border-t border-hb-border flex flex-col gap-4 bg-[#121212]">
            <div className="flex items-center justify-between">
              <button 
                onClick={() => onNavigate('home')}
-               className="flex items-center gap-2 bg-hb-brand-grey text-white px-4 py-2.5 rounded-xl shadow-md active:scale-95 transition-all text-[12px] font-bold uppercase tracking-wide"
+               className="flex items-center gap-2 bg-hb-surface border border-hb-border text-white px-4 py-2.5 rounded-xl shadow-md active:scale-95 transition-all text-[12px] font-bold uppercase tracking-wide hover:border-hb-gold"
              >
                <i className="fas fa-home"></i>
                Home
              </button>
              <button 
-               onClick={onClose} 
-               className="text-hb-gold font-black text-[12px] uppercase tracking-widest px-4 py-2 hover:bg-orange-50 rounded-xl transition-colors"
+               onClick={onLogout} 
+               className="flex items-center gap-2 bg-red-900/20 text-red-400 border border-red-900/30 px-4 py-2.5 rounded-xl shadow-sm active:scale-95 transition-all text-[12px] font-bold uppercase tracking-wide hover:bg-red-900/40"
              >
-               Close
+               <i className="fas fa-sign-out-alt"></i>
+               Logout
              </button>
            </div>
            <div className="flex items-center justify-between opacity-40">
@@ -114,8 +117,8 @@ const Sidebar: React.FC<SidebarProps> = ({ onClose, onNavigate, currentLang, onL
 };
 
 const SidebarLink: React.FC<{ icon: string; color: string; bg: string; label: string; onClick: () => void }> = ({ icon, color, bg, label, onClick }) => (
-  <button onClick={onClick} className="w-full flex items-center gap-5 py-3.5 text-hb-navy hover:text-hb-brand-grey transition-all group rounded-2xl px-3 hover:bg-white hover:shadow-sm border border-transparent hover:border-hb-border/50">
-    <div className={`w-10 h-10 rounded-2xl flex items-center justify-center transition-all shadow-inner ${bg} ${color} group-hover:text-white`}>
+  <button onClick={onClick} className="w-full flex items-center gap-5 py-3.5 text-white hover:text-hb-gold transition-all group rounded-2xl px-3 hover:bg-[#121212] border border-transparent hover:border-hb-border/50">
+    <div className={`w-10 h-10 rounded-2xl flex items-center justify-center transition-all shadow-inner border border-hb-border/20 ${bg} ${color}`}>
       <i className={`fas ${icon} text-lg`}></i>
     </div>
     <span className="font-bold text-base tracking-tight">{label}</span>
@@ -125,7 +128,7 @@ const SidebarLink: React.FC<{ icon: string; color: string; bg: string; label: st
 const LangBtn: React.FC<{ children: React.ReactNode; active: boolean; onClick: () => void }> = ({ children, active, onClick }) => (
   <button 
     onClick={onClick} 
-    className={`p-4 rounded-2xl text-[13px] font-black text-left transition-all border-2 ${active ? 'bg-white text-hb-brand-grey border-hb-brand-grey/20 shadow-sm' : 'bg-gray-50 text-hb-muted border-transparent hover:border-gray-200'}`}
+    className={`p-4 rounded-2xl text-[13px] font-black text-left transition-all border ${active ? 'bg-hb-gold text-hb-blueblack border-hb-gold shadow-sm' : 'bg-[#121212] text-hb-muted border-hb-border hover:border-hb-muted'}`}
   >
     {children}
   </button>

@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { BET_AMOUNTS, MINI_BET_AMOUNTS } from '../constants';
 
@@ -15,10 +16,10 @@ const BettingListView: React.FC<BettingListViewProps> = ({ mode, onModeChange, o
       <div className="flex items-center justify-between mb-6">
         <div>
           <h2 className="text-2xl font-black text-hb-blue mb-1.5 italic tracking-tight uppercase">
-            {mode === 'mini' ? 'Mini Tables' : 'Classic Tables'}
+            {mode === 'mini' ? 'Mini Bingo' : 'Classic Bingo'}
           </h2>
           <p className="text-[11px] text-hb-muted font-bold uppercase tracking-widest">
-            {mode === 'mini' ? 'Faster games, lower stakes' : 'Pro rooms for big wins'}
+            {mode === 'mini' ? 'Fast Games, Low Risk' : 'Standard Rooms, Big Wins'}
           </p>
         </div>
         
@@ -26,7 +27,7 @@ const BettingListView: React.FC<BettingListViewProps> = ({ mode, onModeChange, o
           onClick={() => onModeChange(mode === 'classic' ? 'mini' : 'classic')}
           className={`px-5 py-2.5 rounded-xl text-[10px] font-black uppercase transition-all shadow-sm border-2 ${mode === 'mini' ? 'bg-hb-blue text-white border-hb-blue' : 'bg-white text-hb-gold border-hb-gold/20'}`}
         >
-          {mode === 'classic' ? 'Switch to Mini' : 'Switch to Classic'}
+          {mode === 'classic' ? 'Play Mini' : 'Play Classic'}
         </button>
       </div>
 
@@ -42,11 +43,11 @@ const BettingListView: React.FC<BettingListViewProps> = ({ mode, onModeChange, o
                 {amt >= 1000 ? (amt / 1000) + 'K' : amt}
               </div>
               <div className="text-left">
-                <div className="font-black text-hb-navy text-sm">{amt} ETB Stake</div>
+                <div className="font-black text-hb-navy text-sm">{amt} ETB Entry Fee</div>
                 <div className="text-[10px] text-hb-muted font-bold uppercase tracking-wide">{amt < 20 ? 'Fast Play' : amt < 100 ? 'Regular Room' : 'High Roller'}</div>
               </div>
             </div>
-            <div className={`w-10 h-10 rounded-full flex items-center justify-center shadow-sm group-hover:scale-110 transition-transform ${mode === 'mini' ? 'bg-hb-blue' : 'bg-hb-gold'} text-white`}>
+            <div className={`w-10 h-10 rounded-full flex items-center justify-center shadow-sm group-hover:scale-110 transition-transform ${mode === 'mini' ? 'bg-hb-blue text-white' : 'bg-hb-gold text-hb-blueblack'}`}>
               <i className="fas fa-play ml-0.5 text-[10px]"></i>
             </div>
           </button>

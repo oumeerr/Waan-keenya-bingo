@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { generateCard, generateMiniCard } from '../constants';
 import { APP_CONFIG } from '../config';
@@ -47,7 +48,7 @@ const CardSelectionView: React.FC<CardSelectionViewProps> = ({ betAmount, mode, 
             <div className="bg-white/10 px-2.5 py-1 rounded-lg text-[9px] font-black uppercase border border-white/5">
               Stake: {betAmount} ETB
             </div>
-            <div className={`px-2.5 py-1 rounded-lg text-[9px] font-black uppercase border border-white/10 ${selectedIds.size === APP_CONFIG.GAME.MAX_CARDS_PER_SESSION ? 'bg-red-500' : 'bg-hb-gold/80'}`}>
+            <div className={`px-2.5 py-1 rounded-lg text-[9px] font-black uppercase border border-white/10 ${selectedIds.size === APP_CONFIG.GAME.MAX_CARDS_PER_SESSION ? 'bg-red-500 text-white' : 'bg-hb-gold/80 text-hb-blueblack'}`}>
               {selectedIds.size} / {APP_CONFIG.GAME.MAX_CARDS_PER_SESSION} Selected
             </div>
           </div>
@@ -71,7 +72,7 @@ const CardSelectionView: React.FC<CardSelectionViewProps> = ({ betAmount, mode, 
             onClick={() => setPreviewId(id)}
             className={`w-[36px] h-[36px] rounded-lg flex items-center justify-center font-black text-[14px] tracking-tighter active:scale-90 transition-all border
               ${selectedIds.has(id) 
-                ? 'bg-hb-gold text-white border-hb-gold shadow-md' 
+                ? 'bg-hb-gold text-hb-blueblack border-hb-gold shadow-md' 
                 : 'bg-white text-hb-navy border-hb-border hover:border-hb-blue/20'}`}
           >
             {id}
@@ -102,7 +103,7 @@ const CardSelectionView: React.FC<CardSelectionViewProps> = ({ betAmount, mode, 
                   ))}
                </div>
                <button onClick={() => toggleSelection(previewId)} 
-                className={`w-full h-12 rounded-xl font-black uppercase text-[12px] shadow-lg transition-all active:scale-[0.98] ${selectedIds.has(previewId) ? 'bg-red-500 text-white' : 'bg-hb-gold text-white'}`}
+                className={`w-full h-12 rounded-xl font-black uppercase text-[12px] shadow-lg transition-all active:scale-[0.98] ${selectedIds.has(previewId) ? 'bg-red-500 text-white' : 'bg-hb-gold text-hb-blueblack'}`}
               >
                  {selectedIds.has(previewId) ? 'Deselect' : 'Stake Card'}
                </button>
