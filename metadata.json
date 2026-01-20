@@ -1,0 +1,7 @@
+{
+  "name": "Hulumbingo frontend",
+  "description": "A high-stakes Telegram Mini App for Bingo players, featuring a unique 150-card system, secure wallet management, and weekly prize pools.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
