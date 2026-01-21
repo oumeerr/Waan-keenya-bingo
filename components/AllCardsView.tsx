@@ -79,7 +79,7 @@ const AllCardsView: React.FC<AllCardsViewProps> = ({ onQuickPlay }) => {
                 <div 
                   key={i} 
                   className={`aspect-square text-[8px] font-extrabold flex items-center justify-center rounded-[2px] border border-hb-border/20
-                    ${num === 0 ? 'bg-hb-emerald/10 text-hb-emerald' : 'bg-hb-bg text-gray-400'}`}
+                    ${num === 0 ? 'bg-hb-emerald/10 text-hb-emerald' : 'bg-[#2A2A2A] text-white border-white/5'}`}
                 >
                   {num === 0 ? '★' : num}
                 </div>
