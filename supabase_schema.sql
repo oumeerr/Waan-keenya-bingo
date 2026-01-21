@@ -75,7 +75,7 @@ create trigger on_auth_user_created
   for each row execute procedure public.handle_new_user();
 
 
--- 2. TRANSACTIONS TABLE (Stores history)
+-- 2. TRANSACTIONS TABLE (Stores financial history)
 create table if not exists public.transactions (
   id uuid default gen_random_uuid() primary key,
   user_id uuid references auth.users not null,
@@ -88,29 +88,47 @@ create table if not exists public.transactions (
   created_at timestamp with time zone default timezone('utc'::text, now()) not null
 );
 
--- Enable RLS on Transactions
 alter table public.transactions enable row level security;
 
--- Policies for Transactions
-
--- 1. Users can view their own transactions
 create policy "Users can view their own transactions" 
   on transactions for select 
   using (auth.uid() = user_id);
 
--- 2. Disable direct inserts for users to prevent fake "completed" transactions
 create policy "Users can only insert via RPC" 
   on transactions for insert 
   with check (false); 
 
--- 3. Admin (service_role) can do everything
 create policy "Admin full access" 
   on transactions for all 
   to service_role
   using (true) 
   with check (true);
 
--- 3. SECURE TRANSACTION RPC (User Initiated)
+-- 3. GAME HISTORY TABLE (Stores match results)
+create table if not exists public.game_history (
+  id uuid default gen_random_uuid() primary key,
+  user_id uuid references auth.users not null,
+  game_mode text not null,
+  card_ids jsonb not null,
+  stake numeric not null,
+  payout numeric default 0,
+  status text not null check (status in ('won', 'lost', 'draw', 'abandoned')),
+  called_numbers jsonb default '[]'::jsonb,
+  created_at timestamp with time zone default timezone('utc'::text, now()) not null
+);
+
+alter table public.game_history enable row level security;
+
+create policy "Users can view their own game history"
+  on game_history for select
+  using ( auth.uid() = user_id );
+
+create policy "Users can insert their own game history"
+  on game_history for insert
+  with check ( auth.uid() = user_id );
+
+
+-- 4. SECURE TRANSACTION RPC (User Initiated)
 create or replace function process_transaction(
   p_type text, 
   p_amount numeric, 
@@ -211,7 +229,7 @@ begin
 end;
 $$;
 
--- 4. ADMIN APPROVAL RPC (Admin Initiated)
+-- 5. ADMIN APPROVAL RPC (Admin Initiated)
 create or replace function approve_transaction(
   p_transaction_id uuid,
   p_action text -- 'approve' or 'reject'

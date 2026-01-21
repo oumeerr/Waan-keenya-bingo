@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { User } from '../types';
 import { generateCard, generateMiniCard } from '../constants';
 import { APP_CONFIG } from '../config';
@@ -42,6 +42,15 @@ const GameView: React.FC<GameViewProps> = ({ cardIds, betAmount, mode, user, set
   
   const callInterval = useRef<number | null>(null);
 
+  // --- Core Game Logic ---
+
+  // Calculate the total pot available to win (Net after 20% Fee)
+  // Logic: (Stake Per Card * Num Cards * 2 Players) * (1 - 0.20 Fee)
+  const sessionPot = useMemo(() => {
+    const totalRawStake = betAmount * cardIds.length * 2;
+    return Math.floor(totalRawStake * (1 - APP_CONFIG.GAME.HOUSE_FEE_PERCENT));
+  }, [betAmount, cardIds.length]);
+
   const checkWinForCard = useCallback((id: number, currentMarked: Set<number>) => {
     const grid = allCardsData.current[id];
     const isMarked = (n: number) => currentMarked.has(n);
@@ -79,43 +88,73 @@ const GameView: React.FC<GameViewProps> = ({ cardIds, betAmount, mode, user, set
   const winningCardsList = cardIds.filter(id => checkWinForCard(id, markedByCard[id]));
   const isAnyWinning = winningCardsList.length > 0;
 
-  const handleCallBingo = useCallback(async () => {
+  // --- Game Termination Logic (History & Balance) ---
+
+  const completeGameSession = async (status: 'won' | 'lost' | 'abandoned', payout: number, winCards: number[] = []) => {
     if (callInterval.current) clearInterval(callInterval.current);
     
+    // 1. Calculate new stats
+    const userStake = betAmount * cardIds.length;
+    const newBalance = user.balance + payout;
+    const newWins = status === 'won' ? user.wins + 1 : user.wins;
+
+    // 2. Local State Updates
+    setWinnings(payout);
+    setWinningCardIds(winCards);
+    setWinner(status === 'won' ? user.username : (status === 'abandoned' ? 'SURRENDER' : 'HOUSE'));
+    setGameState('finished');
+    
+    // 3. Update User Balance (Optimistic)
+    if (status === 'won') {
+       setUser(prev => ({ ...prev, balance: newBalance, wins: newWins }));
+    }
+
+    // 4. Persist to Database (History & Profile)
+    if (user.id !== 'guest') {
+       try {
+         // Update Profile if won
+         if (status === 'won') {
+           await supabase
+            .from('profiles')
+            .update({ balance: newBalance, wins: newWins })
+            .eq('id', user.id);
+         }
+
+         // Insert Game History
+         await supabase.from('game_history').insert({
+            user_id: user.id,
+            game_mode: mode,
+            card_ids: cardIds,
+            stake: userStake,
+            payout: payout,
+            status: status,
+            called_numbers: drawnNumbers // Saves the sequence called so far
+         });
+       } catch (err) {
+         console.error("Failed to save game history:", err);
+       }
+    }
+  };
+
+  const handleCallBingo = useCallback(async () => {
     if (!isAnyWinning) {
-      setWinnings(0);
-      setWinningCardIds([]);
-      setWinner("HOUSE (FALSE BINGO)");
-      setGameState('finished');
+      // False Bingo -> Loss
+      completeGameSession('lost', 0);
       return;
     }
     
-    const totalStake = betAmount * 2;
-    const winAmount = Math.floor(totalStake * (1 - APP_CONFIG.GAME.HOUSE_FEE_PERCENT));
-    const newBalance = user.balance + winAmount;
-    const newWins = user.wins + 1;
+    // Win Amount is the Session Pot (which already has 20% deducted)
+    completeGameSession('won', sessionPot, winningCardsList);
+  }, [isAnyWinning, sessionPot, winningCardsList, drawnNumbers]);
 
-    setWinnings(winAmount);
-    setWinningCardIds(winningCardsList);
-    setWinner(user.username);
-    
-    // Optimistic Update
-    setUser(prev => ({ ...prev, balance: newBalance, wins: newWins }));
+  const handleLeaveMatch = async () => {
+     await completeGameSession('abandoned', 0);
+     onClose(); // Proceed to close UI
+  };
 
-    // Supabase Update
-    if (user.id !== 'guest') {
-       const { error } = await supabase
-        .from('profiles')
-        .update({ balance: newBalance, wins: newWins })
-        .eq('id', user.id);
-        
-       if (error) console.error("Failed to update winnings in DB:", error);
-    }
+  // --- Effects ---
 
-    setGameState('finished');
-  }, [isAnyWinning, betAmount, winningCardsList, user.username, setUser, user.balance, user.wins, user.id]);
-
-  // Matchmaking Timer Sync - Ensures game starts NO MATTER WHAT
+  // Matchmaking Timer
   useEffect(() => {
     if (gameState === 'matchmaking') {
       const initialRemaining = getRemainingTime();
@@ -125,7 +164,6 @@ const GameView: React.FC<GameViewProps> = ({ cardIds, betAmount, mode, user, set
       }
       
       setCountdown(initialRemaining);
-
       const timer = setInterval(() => {
         const remaining = getRemainingTime();
         setCountdown(remaining);
@@ -134,54 +172,70 @@ const GameView: React.FC<GameViewProps> = ({ cardIds, betAmount, mode, user, set
           setGameState('playing');
         }
       }, 1000);
-      
       return () => clearInterval(timer);
     }
   }, [gameState, getRemainingTime]);
 
-  // Autoplayer Effect
+  // Auto-Play
   useEffect(() => {
-    if (gameState === 'playing' && isAutoPlay && isAnyWinning) {
-      handleCallBingo();
-    }
-  }, [gameState, isAutoPlay, isAnyWinning, handleCallBingo]);
+    if (gameState === 'playing' && isAutoPlay) {
+      setMarkedByCard(prev => {
+        const next = { ...prev };
+        let hasChanges = false;
+        cardIds.forEach(id => {
+          const cardGrid = allCardsData.current[id].flat();
+          const currentMarks = next[id];
+          const missingMarks = drawnNumbers.filter(n => n !== 0 && cardGrid.includes(n) && !currentMarks.has(n));
+          if (missingMarks.length > 0) {
+            next[id] = new Set([...currentMarks, ...missingMarks]);
+            hasChanges = true;
+          }
+        });
+        return hasChanges ? next : prev;
+      });
 
+      if (isAnyWinning) {
+        handleCallBingo();
+      }
+    }
+  }, [gameState, isAutoPlay, drawnNumbers, isAnyWinning, handleCallBingo, cardIds]);
+
+  // Manual Click
+  const handleManualDaub = (cardId: number, num: number) => {
+    if (num === 0) return;
+    if (!drawnNumbers.includes(num)) return;
+    setMarkedByCard(prev => {
+      const currentMarks = prev[cardId];
+      if (currentMarks.has(num)) return prev;
+      return { ...prev, [cardId]: new Set([...currentMarks, num]) };
+    });
+  };
+
+  // Game Loop (Drawing Numbers)
   useEffect(() => {
     if (gameState === 'playing') {
       const poolSize = mode === 'mini' ? 30 : 75;
       const pool = Array.from({ length: poolSize }, (_, i) => i + 1);
       const shuffled = [...pool].sort(() => Math.random() - 0.5);
       let idx = 0;
-
       const intervalMs = mode === 'mini' ? APP_CONFIG.GAME.CALL_INTERVAL_MINI_MS : APP_CONFIG.GAME.CALL_INTERVAL_CLASSIC_MS;
 
       callInterval.current = window.setInterval(() => {
         if (idx >= poolSize) {
+          // Pool Exhausted -> Draw/Loss
           if (callInterval.current) clearInterval(callInterval.current);
-          setGameState('finished');
-          setWinner('DRAW (NO WINNERS)');
+          completeGameSession('lost', 0); // Treated as loss if no one bingoed
           return;
         }
-
         const num = shuffled[idx++];
         setDrawnNumbers(prev => [...prev, num]);
-
-        setMarkedByCard(prev => {
-          const next = { ...prev };
-          cardIds.forEach(id => {
-            if (allCardsData.current[id].flat().includes(num)) {
-              next[id] = new Set([...prev[id], num]);
-            }
-          });
-          return next;
-        });
       }, intervalMs);
 
       return () => {
         if (callInterval.current) clearInterval(callInterval.current);
       };
     }
-  }, [gameState, mode, cardIds]);
+  }, [gameState, mode]);
 
   const getCardProgress = (id: number) => {
     const grid = allCardsData.current[id];
@@ -249,7 +303,10 @@ const GameView: React.FC<GameViewProps> = ({ cardIds, betAmount, mode, user, set
           <div className="flex justify-between items-center mb-4 bg-white px-5 py-4 rounded-3xl shadow-sm border border-hb-border mx-2">
             <div className="flex flex-col">
               <span className="text-[10px] font-black text-hb-muted uppercase tracking-widest mb-1">Session Pot</span>
-              <span className="text-[22px] font-black text-hb-emerald leading-none">{(betAmount * 2 * (1 - APP_CONFIG.GAME.HOUSE_FEE_PERCENT)).toLocaleString()} <span className="text-[12px] opacity-60">ETB</span></span>
+              <span className="text-[22px] font-black text-hb-emerald leading-none">
+                {sessionPot.toLocaleString()} <span className="text-[12px] opacity-60">ETB</span>
+              </span>
+              <span className="text-[8px] font-bold text-hb-muted uppercase tracking-tighter mt-1">20% Fee Applied</span>
             </div>
             <div className="bg-hb-navy text-white px-4 py-2 rounded-2xl flex items-center gap-2 shadow-lg">
                <i className="fas fa-server text-[10px] text-hb-gold animate-pulse"></i>
@@ -308,11 +365,14 @@ const GameView: React.FC<GameViewProps> = ({ cardIds, betAmount, mode, user, set
                   </div>
                   <div className={`grid ${mode === 'mini' ? 'grid-cols-3' : 'grid-cols-5'} gap-1 justify-items-center`}>
                     {allCardsData.current[id].flat().map((num, i) => (
-                      <div key={i} className={`aspect-square w-full flex items-center justify-center rounded-lg font-black text-[11px] transition-all duration-300
+                      <div 
+                        key={i} 
+                        onClick={() => handleManualDaub(id, num)}
+                        className={`aspect-square w-full flex items-center justify-center rounded-lg font-black text-[11px] transition-all duration-300 cursor-pointer select-none
                         ${num === 0 ? 'bg-hb-emerald/10 text-hb-emerald border-2 border-hb-emerald/10' : 
                           markedByCard[id].has(num) 
                             ? 'bg-hb-gold text-hb-blueblack border-2 border-hb-gold shadow-lg scale-105' 
-                            : 'bg-[#1E1E1E] text-white border border-white/10'}`}
+                            : 'bg-[#1E1E1E] text-white border border-white/10 hover:border-hb-gold/50 active:scale-90'}`}
                       >
                         {num === 0 ? '★' : num}
                       </div>
@@ -333,13 +393,13 @@ const GameView: React.FC<GameViewProps> = ({ cardIds, betAmount, mode, user, set
           <div className="mt-10 px-3 flex flex-col gap-4">
             <button 
               onClick={handleCallBingo}
-              disabled={isAutoPlay && isAnyWinning}
+              disabled={isAutoPlay && isAnyWinning} 
               className={`w-full h-[76px] rounded-[28px] font-black text-[26px] shadow-2xl transition-all uppercase tracking-tight border-b-[6px] flex items-center justify-center gap-4 active:scale-95 bg-hb-gold border-[#d97706] text-hb-blueblack hover:brightness-110 ${isAutoPlay && isAnyWinning ? 'opacity-50 grayscale cursor-not-allowed' : ''}`}
             >
               <i className="fas fa-crown text-[20px]"></i>
               {isAutoPlay && isAnyWinning ? 'Processing...' : 'BINGO!'}
             </button>
-            <button onClick={onClose} className="text-[11px] font-black text-hb-muted uppercase tracking-[0.4em] hover:text-red-500 py-3 transition-colors">Abandom Match</button>
+            <button onClick={handleLeaveMatch} className="text-[11px] font-black text-hb-muted uppercase tracking-[0.4em] hover:text-red-500 py-3 transition-colors">Leave Match</button>
           </div>
         </div>
       )}

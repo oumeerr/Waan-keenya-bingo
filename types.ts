@@ -37,3 +37,14 @@ export interface JournalEntry {
   timestamp: number;
   mood: 'lucky' | 'neutral' | 'tilted';
 }
+
+export interface GameHistoryItem {
+  id: string;
+  game_mode: 'classic' | 'mini';
+  stake: number;
+  payout: number;
+  status: 'won' | 'lost' | 'draw' | 'abandoned';
+  created_at: string;
+  card_ids: number[];
+  called_numbers: number[];
+}

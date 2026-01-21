@@ -35,16 +35,31 @@ const MethodButton: React.FC<MethodButtonProps> = ({
 }) => {
   const isSelectedStyle = selected 
     ? 'border-hb-gold ring-2 ring-hb-gold/50 bg-[#121212]' 
-    : 'border-hb-border bg-[#121212] hover:border-hb-muted opacity-60 hover:opacity-100';
+    : 'border-hb-border bg-[#121212] hover:border-hb-muted opacity-100 grayscale hover:grayscale-0';
 
   return (
     <button 
       onClick={() => onClick(id)}
       className={`relative aspect-square rounded-2xl border-2 transition-all group shadow-sm active:scale-95 flex items-center justify-center p-2 overflow-hidden ${isSelectedStyle}`}
     >
-      <img src={logoUrl} alt={id} className="w-full h-full object-contain rounded-xl" />
+      <img 
+        src={logoUrl} 
+        alt={id} 
+        className="w-full h-full object-cover rounded-xl bg-white" 
+        onError={(e) => {
+          e.currentTarget.style.display = 'none';
+          const parent = e.currentTarget.parentElement;
+          if (parent) {
+            parent.classList.add('bg-hb-surface');
+            const span = document.createElement('span');
+            span.textContent = id;
+            span.className = 'text-[10px] font-black text-white uppercase';
+            parent.appendChild(span);
+          }
+        }}
+      />
       {selected && (
-        <div className="absolute top-1 right-1 w-4 h-4 bg-hb-gold rounded-full flex items-center justify-center shadow-md">
+        <div className="absolute top-1 right-1 w-4 h-4 bg-hb-gold rounded-full flex items-center justify-center shadow-md z-10">
            <i className="fas fa-check text-[8px] text-hb-blueblack"></i>
         </div>
       )}
@@ -234,7 +249,7 @@ const WalletView: React.FC<WalletViewProps> = ({ user, setUser }) => {
             onClick={() => setActiveTab(tab as any)}
             className={`flex-1 py-3 rounded-xl text-[11px] font-bold uppercase transition-all ${activeTab === tab ? 'bg-hb-gold text-hb-blueblack shadow-md' : 'text-hb-muted hover:text-white'}`}
           >
-            {tab === 'deposit' ? 'Add Money' : tab === 'withdraw' ? 'Get Cash' : 'Send Money'}
+            {tab === 'deposit' ? 'Deposit' : tab === 'withdraw' ? 'Withdraw' : 'Transfer'}
           </button>
         ))}
       </div>
@@ -254,9 +269,9 @@ const WalletView: React.FC<WalletViewProps> = ({ user, setUser }) => {
           <div className="bg-hb-surface p-7 rounded-[24px] border border-hb-border shadow-sm space-y-6">
             <div className="text-center space-y-3">
               <div className="flex items-center justify-center gap-2">
-                <img src={LOGOS[selectedMethod]} className="w-6 h-6 rounded-md object-cover" alt="Selected" />
+                <img src={LOGOS[selectedMethod]} className="w-6 h-6 rounded-md object-cover bg-white" alt="Selected" />
                 <h3 className="font-bold text-white text-[16px] uppercase tracking-tight">
-                  Transfer to {selectedMethod === 'cbe' ? 'CBE' : selectedMethod.charAt(0).toUpperCase() + selectedMethod.slice(1)}
+                  Deposit via {selectedMethod === 'cbe' ? 'CBE' : selectedMethod.charAt(0).toUpperCase() + selectedMethod.slice(1)}
                 </h3>
               </div>
               <p className="text-[12px] text-hb-muted font-medium">Send (Min 30 ETB) to merchant:</p>
@@ -308,7 +323,7 @@ const WalletView: React.FC<WalletViewProps> = ({ user, setUser }) => {
                 className="w-full h-[54px] bg-hb-gold text-hb-blueblack font-bold rounded-xl text-[14px] uppercase shadow-lg active:scale-[0.98] mt-4 flex items-center justify-center gap-2 transition-all hover:brightness-110 disabled:opacity-50"
               >
                 {loading ? <i className="fas fa-spinner fa-spin"></i> : <i className="fas fa-check-circle"></i>}
-                {loading ? 'Verifying...' : 'Submit Deposit'}
+                {loading ? 'Verifying...' : 'Confirm Deposit'}
               </button>
             </div>
           </div>
@@ -344,7 +359,7 @@ const WalletView: React.FC<WalletViewProps> = ({ user, setUser }) => {
       {activeTab === 'withdraw' && (
         <div className="bg-hb-surface p-7 rounded-[24px] border border-hb-border shadow-sm space-y-6">
            <div className="text-center">
-              <h3 className="font-bold text-white text-[18px] mb-1 italic">Get Cash Out</h3>
+              <h3 className="font-bold text-white text-[18px] mb-1 italic">Withdraw Funds</h3>
               <p className="text-[12px] text-hb-muted font-medium">Window: {APP_CONFIG.WALLET.WITHDRAWAL_START_HOUR} AM to {APP_CONFIG.WALLET.WITHDRAWAL_END_HOUR - 12} PM.</p>
            </div>
 
@@ -400,7 +415,7 @@ const WalletView: React.FC<WalletViewProps> = ({ user, setUser }) => {
                 className="w-full h-[54px] bg-hb-gold text-hb-blueblack font-bold rounded-xl text-[14px] uppercase shadow-lg active:scale-[0.98] disabled:opacity-40 transition-all mt-4 flex items-center justify-center gap-2"
               >
                 {loading && <i className="fas fa-spinner fa-spin"></i>}
-                Request Cash Out
+                Withdraw Funds
               </button>
               {!isWithdrawActive() && (
                 <p className="text-[10px] text-red-500 font-bold text-center italic">Withdrawals paused. Resume at {APP_CONFIG.WALLET.WITHDRAWAL_START_HOUR} AM.</p>
@@ -412,7 +427,7 @@ const WalletView: React.FC<WalletViewProps> = ({ user, setUser }) => {
       {activeTab === 'transfer' && (
         <div className="bg-hb-surface p-7 rounded-[24px] border border-hb-border shadow-sm space-y-6">
            <div className="text-center">
-              <h3 className="font-bold text-white text-[18px] mb-1 italic">Send Money</h3>
+              <h3 className="font-bold text-white text-[18px] mb-1 italic">Transfer Funds</h3>
               <p className="text-[12px] text-hb-muted font-medium">Move funds to another player's account (Min 100 ETB).</p>
            </div>
 
@@ -461,7 +476,7 @@ const WalletView: React.FC<WalletViewProps> = ({ user, setUser }) => {
                 className="w-full h-[54px] bg-hb-gold text-hb-blueblack font-bold rounded-xl text-[14px] uppercase shadow-lg active:scale-[0.98] transition-all mt-4 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
                 {loading && <i className="fas fa-spinner fa-spin"></i>}
-                {user.balance < totalTransferDeduction ? 'Insufficient Funds' : 'Send Money'}
+                {user.balance < totalTransferDeduction ? 'Insufficient Funds' : 'Transfer Funds'}
               </button>
            </div>
            
