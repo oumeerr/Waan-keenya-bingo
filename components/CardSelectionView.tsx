@@ -96,7 +96,7 @@ const CardSelectionView: React.FC<CardSelectionViewProps> = ({ betAmount, mode, 
                     <div 
                       key={i} 
                       className={`aspect-square mini-card-cell border border-hb-border/50
-                        ${num === 0 ? 'bg-hb-emerald/10 text-hb-emerald' : 'bg-[#2A2A2A] text-white border-white/5'}`}
+                        ${num === 0 ? 'bg-hb-emerald/10 text-hb-emerald' : 'bg-[#1E1E1E] text-white border-white/5'}`}
                     >
                       {num === 0 ? '★' : num}
                     </div>

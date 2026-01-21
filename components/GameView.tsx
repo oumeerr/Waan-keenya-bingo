@@ -200,12 +200,6 @@ const GameView: React.FC<GameViewProps> = ({ cardIds, betAmount, mode, user, set
     return { current: max, total: size };
   };
 
-  const getBallStyle = (num: number) => {
-    if (num === 0) return 'from-emerald-400 to-emerald-600 text-white';
-    // Highly visible blue gradient for marked numbers
-    return 'from-blue-500 to-blue-700 text-white shadow-[0_0_8px_rgba(59,130,246,0.5)] border-2 border-blue-400/50';
-  };
-
   return (
     <div className="min-h-full flex flex-col items-center pt-4 px-2 pb-20">
       {gameState === 'matchmaking' && (
@@ -238,7 +232,7 @@ const GameView: React.FC<GameViewProps> = ({ cardIds, betAmount, mode, user, set
                      </div>
                      <div className={`grid ${mode === 'mini' ? 'grid-cols-3' : 'grid-cols-5'} gap-0.5 opacity-40 group-hover:opacity-100 transition-opacity`}>
                         {allCardsData.current[id].flat().map((n, i) => (
-                           <div key={i} className={`aspect-square flex items-center justify-center text-[7px] font-black rounded-sm ${n===0 ? 'bg-hb-emerald/10 text-hb-emerald' : 'bg-[#2A2A2A] text-white border border-white/10'}`}>
+                           <div key={i} className={`aspect-square flex items-center justify-center text-[7px] font-black rounded-sm ${n===0 ? 'bg-hb-emerald/10 text-hb-emerald' : 'bg-[#1E1E1E] text-white border border-white/10'}`}>
                              {n===0 ? '★' : n}
                            </div>
                         ))}
@@ -266,9 +260,9 @@ const GameView: React.FC<GameViewProps> = ({ cardIds, betAmount, mode, user, set
           <div className="flex items-center gap-3 mb-8 justify-center h-[60px]">
              {drawnNumbers.length > 0 ? (
                <div className="flex flex-col items-center animate-in zoom-in-50 duration-300">
-                  <div className="text-[32px] font-black text-hb-navy px-8 py-2 bg-white rounded-2xl border-[3px] border-hb-navy shadow-xl scale-110 relative">
+                  <div className="text-[32px] font-black text-hb-blueblack px-8 py-2 bg-hb-gold rounded-2xl border-[3px] border-white shadow-xl scale-110 relative">
                     {drawnNumbers[drawnNumbers.length - 1]}
-                    <div className="absolute -top-2 -right-2 w-5 h-5 bg-hb-gold text-white text-[9px] rounded-full flex items-center justify-center">
+                    <div className="absolute -top-2 -right-2 w-5 h-5 bg-hb-blue text-white text-[9px] rounded-full flex items-center justify-center border border-white">
                       {drawnNumbers.length}
                     </div>
                   </div>
@@ -317,8 +311,8 @@ const GameView: React.FC<GameViewProps> = ({ cardIds, betAmount, mode, user, set
                       <div key={i} className={`aspect-square w-full flex items-center justify-center rounded-lg font-black text-[11px] transition-all duration-300
                         ${num === 0 ? 'bg-hb-emerald/10 text-hb-emerald border-2 border-hb-emerald/10' : 
                           markedByCard[id].has(num) 
-                            ? `bingo-ball-3d ${getBallStyle(num)} scale-105` 
-                            : 'bg-[#2A2A2A] text-white border border-white/10'}`}
+                            ? 'bg-hb-gold text-hb-blueblack border-2 border-hb-gold shadow-lg scale-105' 
+                            : 'bg-[#1E1E1E] text-white border border-white/10'}`}
                       >
                         {num === 0 ? '★' : num}
                       </div>
@@ -352,7 +346,7 @@ const GameView: React.FC<GameViewProps> = ({ cardIds, betAmount, mode, user, set
 
       {gameState === 'finished' && (
         <div className="fixed inset-0 z-[100] bg-hb-navy flex flex-col items-center justify-center p-8 text-center animate-in fade-in duration-500">
-           <div className="w-32 h-32 mb-8 bingo-ball-3d from-hb-gold to-[#d97706] rounded-full flex items-center justify-center text-[56px] shadow-[0_0_50px_rgba(249,115,22,0.4)] relative">
+           <div className="w-32 h-32 mb-8 bg-gradient-to-br from-hb-gold to-orange-500 rounded-full flex items-center justify-center text-[56px] shadow-[0_0_50px_rgba(249,115,22,0.4)] relative">
              {winner === user.username ? '🏆' : '💀'}
              <div className="absolute -top-4 -right-4 bg-white text-hb-navy text-[12px] font-black px-4 py-1.5 rounded-2xl border-4 border-hb-gold uppercase shadow-xl">
                {winner === user.username ? 'Victory' : 'Defeat'}
