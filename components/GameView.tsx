@@ -202,7 +202,8 @@ const GameView: React.FC<GameViewProps> = ({ cardIds, betAmount, mode, user, set
 
   const getBallStyle = (num: number) => {
     if (num === 0) return 'from-emerald-400 to-emerald-600 text-white';
-    return 'from-blue-900 to-hb-navy text-white shadow-[0_0_8px_rgba(15,23,42,0.4)]';
+    // Improved visibility for marked numbers
+    return 'from-blue-500 to-blue-700 text-white shadow-[0_0_8px_rgba(59,130,246,0.5)]';
   };
 
   return (
@@ -237,7 +238,7 @@ const GameView: React.FC<GameViewProps> = ({ cardIds, betAmount, mode, user, set
                      </div>
                      <div className={`grid ${mode === 'mini' ? 'grid-cols-3' : 'grid-cols-5'} gap-0.5 opacity-40 group-hover:opacity-100 transition-opacity`}>
                         {allCardsData.current[id].flat().map((n, i) => (
-                           <div key={i} className={`aspect-square flex items-center justify-center text-[7px] font-black rounded-sm ${n===0 ? 'bg-hb-emerald/10 text-hb-emerald' : 'bg-hb-bg text-hb-brand-grey border border-hb-border/30'}`}>
+                           <div key={i} className={`aspect-square flex items-center justify-center text-[7px] font-black rounded-sm ${n===0 ? 'bg-hb-emerald/10 text-hb-emerald' : 'bg-hb-bg text-gray-400 border border-hb-border/30'}`}>
                              {n===0 ? '★' : n}
                            </div>
                         ))}
@@ -317,7 +318,7 @@ const GameView: React.FC<GameViewProps> = ({ cardIds, betAmount, mode, user, set
                         ${num === 0 ? 'bg-hb-emerald/10 text-hb-emerald border-2 border-hb-emerald/10' : 
                           markedByCard[id].has(num) 
                             ? `bingo-ball-3d ${getBallStyle(num)}` 
-                            : 'bg-hb-bg text-hb-navy border border-hb-border/30'}`}
+                            : 'bg-hb-bg text-gray-300 border border-hb-border/30'}`}
                       >
                         {num === 0 ? '★' : num}
                       </div>
