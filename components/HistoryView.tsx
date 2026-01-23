@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { generateCard, generateMiniCard } from '../constants';
 import { supabase } from '../services/supabase';
@@ -53,6 +52,7 @@ const HistoryView: React.FC = () => {
             const grid = h.game_mode === 'mini' ? generateMiniCard(mainCardId) : generateCard(mainCardId);
             const flatGrid = grid.flat();
             const calledSet = new Set(h.called_numbers || []);
+            const lastCalled = h.called_numbers && h.called_numbers.length > 0 ? h.called_numbers[h.called_numbers.length - 1] : null;
             
             return (
               <div key={h.id} className="bg-white rounded-[2.5rem] border border-hb-border overflow-hidden shadow-sm hover:shadow-md transition-shadow">
@@ -77,6 +77,19 @@ const HistoryView: React.FC = () => {
                   </div>
                 </div>
                 
+                {/* Winning Number Highlight */}
+                {lastCalled && (
+                  <div className="bg-hb-navy/5 px-5 py-2 border-b border-hb-border/50 flex items-center justify-between">
+                    <span className="text-[10px] font-bold text-hb-navy uppercase">Last Call</span>
+                    <div className="flex items-center gap-2">
+                       <span className="text-[10px] font-black text-hb-muted uppercase">{h.status === 'won' ? 'Winning Ball' : 'Stopped At'}</span>
+                       <span className="bg-hb-navy text-white text-[10px] font-black w-6 h-6 rounded-full flex items-center justify-center shadow-sm">
+                         {lastCalled}
+                       </span>
+                    </div>
+                  </div>
+                )}
+                
                 {/* Vertical Side-by-Side: Cartela vs Call Log */}
                 <div className="p-5 grid grid-cols-12 gap-6">
                   
@@ -88,11 +101,15 @@ const HistoryView: React.FC = () => {
                     <div className={`grid ${h.game_mode === 'mini' ? 'grid-cols-3' : 'grid-cols-5'} gap-1 bg-hb-bg p-2 rounded-2xl border border-hb-border shadow-inner`}>
                       {flatGrid.map((num, idx) => {
                         const isMarked = num === 0 || calledSet.has(num);
+                        const isWinnerCell = h.status === 'won' && num === lastCalled;
+                        
                         return (
                           <div 
                             key={idx} 
                             className={`aspect-square flex items-center justify-center text-[10px] font-black rounded-lg border transition-all
-                              ${isMarked 
+                              ${isWinnerCell 
+                                ? 'bg-hb-gold text-hb-blueblack border-hb-gold animate-pulse'
+                                : isMarked 
                                   ? 'bg-hb-navy text-white border-hb-navy' 
                                   : 'bg-white text-hb-navy/40 border-hb-border/50'}`}
                           >
@@ -113,9 +130,9 @@ const HistoryView: React.FC = () => {
                         {h.called_numbers && h.called_numbers.length > 0 ? h.called_numbers.map((num, idx) => (
                           <div 
                             key={idx} 
-                            className="flex items-center gap-2 p-1.5 rounded-xl border transition-all bg-white text-hb-navy border-hb-border shadow-sm"
+                            className={`flex items-center gap-2 p-1.5 rounded-xl border transition-all shadow-sm ${num === lastCalled && h.status === 'won' ? 'bg-hb-gold border-hb-gold text-hb-blueblack' : 'bg-white text-hb-navy border-hb-border'}`}
                           >
-                            <span className="w-5 h-5 shrink-0 rounded-lg flex items-center justify-center text-[8px] font-black border bg-hb-bg border-hb-border text-hb-muted">
+                            <span className={`w-5 h-5 shrink-0 rounded-lg flex items-center justify-center text-[8px] font-black border ${num === lastCalled && h.status === 'won' ? 'bg-white/20 border-black/10 text-hb-blueblack' : 'bg-hb-bg border-hb-border text-hb-muted'}`}>
                               {idx + 1}
                             </span>
                             <span className="text-[11px] font-black tracking-tight">

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../services/supabase';
 
@@ -56,7 +55,7 @@ const LeaderboardView: React.FC = () => {
   return (
     <div className="p-4">
       <div className="bg-orange-500 p-8 rounded-[2.5rem] text-white mb-6 shadow-xl text-center relative overflow-hidden">
-        <h2 className="text-2xl font-black mb-1 italic tracking-tighter uppercase">Hall of Fame</h2>
+        <h2 className="text-2xl font-black mb-1 italic tracking-tighter uppercase">Top Players</h2>
         <p className="text-[10px] font-bold opacity-80 uppercase tracking-widest">Our Top Earners</p>
         <div className="mt-4 flex justify-center gap-2">
           <div className="w-16 h-1 bg-white/20 rounded-full"></div>
@@ -71,13 +70,13 @@ const LeaderboardView: React.FC = () => {
           onClick={() => setTab('daily')}
           className={`flex-1 py-3 rounded-xl font-black text-[10px] uppercase transition-all ${tab === 'daily' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-400'}`}
         >
-          Top Balances
+          Daily Players
         </button>
         <button 
           onClick={() => setTab('weekly')}
           className={`flex-1 py-3 rounded-xl font-black text-[10px] uppercase transition-all ${tab === 'weekly' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-400'}`}
         >
-          Weekly Giants
+          Weekly Champions
         </button>
       </div>
 
@@ -112,7 +111,7 @@ const LeaderboardView: React.FC = () => {
 
       <div className="mt-8 p-6 bg-blue-50 rounded-[2rem] border border-blue-100">
         <p className="text-[10px] text-blue-600 font-bold text-center leading-relaxed">
-          The Hall of Fame rewards the most active players! <br/> 
+          The Top Players list rewards the most active players! <br/> 
           Rankings are based on current wallet balance.
         </p>
       </div>

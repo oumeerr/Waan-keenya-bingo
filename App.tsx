@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { supabase } from './services/supabase';
 import { View, Language, User } from './types';
@@ -222,7 +221,7 @@ const App: React.FC = () => {
           >
             <div className="flex items-center gap-3">
               <div className="w-2 h-2 rounded-full bg-hb-gold animate-ping"></div>
-              <span className="text-[11px] font-black uppercase tracking-widest">Live Arena Active</span>
+              <span className="text-[11px] font-black uppercase tracking-widest">Live Game Active</span>
             </div>
             <div className="flex items-center gap-2">
               <span className="text-[10px] font-bold uppercase opacity-80">Re-enter</span>

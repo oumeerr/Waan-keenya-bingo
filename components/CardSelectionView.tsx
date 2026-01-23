@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { generateCard, generateMiniCard } from '../constants';
 import { APP_CONFIG } from '../config';
@@ -41,7 +40,7 @@ const CardSelectionView: React.FC<CardSelectionViewProps> = ({ betAmount, mode, 
       <div className="bg-hb-navy p-5 rounded-[20px] text-white mb-4 shadow-md relative overflow-hidden">
         <div className="relative z-10">
           <h2 className="text-[16px] font-bold italic tracking-tight mb-2 uppercase">
-            {mode === 'mini' ? 'Mini Arena' : 'Classic Arena'}
+            {mode === 'mini' ? 'Mini Game' : 'Classic Game'}
           </h2>
           
           <div className="flex gap-2 items-center">
@@ -124,7 +123,7 @@ const CardSelectionView: React.FC<CardSelectionViewProps> = ({ betAmount, mode, 
               <div className="text-[8px] font-black uppercase opacity-60 tracking-widest mt-0.5">Total Stake</div>
             </div>
             <div className="flex items-center gap-2">
-              <span className="text-[10px] font-black uppercase">Enter Arena</span>
+              <span className="text-[10px] font-black uppercase">Start Game</span>
               <i className="fas fa-arrow-right text-[10px]"></i>
             </div>
           </button>

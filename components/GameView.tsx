@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { User } from '../types';
 import { generateCard, generateMiniCard } from '../constants';
@@ -14,6 +13,89 @@ interface GameViewProps {
   matchStartTime: number;
   onClose: () => void;
 }
+
+// Backend-style Logic for Payout Calculation
+const calculateWinnerPayout = (totalBets: number) => {
+  const feePercentage = 0.20;
+  const feeAmount = totalBets * feePercentage;
+  const winnerPayout = totalBets - feeAmount;
+  
+  return { winnerPayout: Math.floor(winnerPayout), feeAmount: Math.floor(feeAmount) };
+};
+
+// Sub-component: Audio Controller
+const BingoAudioController: React.FC<{ currentNumber: number | null }> = ({ currentNumber }) => {
+  const [isMuted, setIsMuted] = useState(false);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+
+  useEffect(() => {
+    audioRef.current = new Audio('/call-sound.mp3');
+  }, []);
+
+  useEffect(() => {
+    if (!isMuted && currentNumber !== null && audioRef.current) {
+      audioRef.current.currentTime = 0;
+      audioRef.current.play().catch(() => {});
+    }
+  }, [currentNumber, isMuted]);
+
+  return (
+    <div className="absolute top-4 right-4 z-20">
+      <button 
+        onClick={() => setIsMuted(!isMuted)} 
+        className={`w-10 h-10 rounded-full flex items-center justify-center border transition-all shadow-md ${isMuted ? 'bg-hb-surface text-hb-muted border-hb-border' : 'bg-white text-hb-blue border-white'}`}
+      >
+        <i className={`fas ${isMuted ? 'fa-volume-mute' : 'fa-volume-up'} text-sm`}></i>
+      </button>
+    </div>
+  );
+};
+
+// Sub-component: Stats Display
+const BingoStats: React.FC<{ betAmount: number, playerCount: number, possibleWin: number, balance: number }> = ({ betAmount, playerCount, possibleWin, balance }) => {
+  return (
+    <div className="w-full max-w-[440px] px-2 mb-4">
+      <div className="bg-hb-surface border border-hb-border rounded-[20px] p-4 flex flex-col gap-3 shadow-lg">
+        {/* Main Balance */}
+        <div className="flex justify-between items-center border-b border-hb-border pb-3">
+          <div className="flex items-center gap-2">
+            <span className="w-8 h-8 bg-hb-gold rounded-lg flex items-center justify-center text-hb-blueblack shadow-sm">
+              <i className="fas fa-coins text-sm"></i>
+            </span>
+            <div className="flex flex-col">
+              <span className="text-[10px] font-black text-hb-muted uppercase tracking-widest">My Balance</span>
+              <span className="text-[16px] font-black text-white leading-none">{balance.toLocaleString()} ETB</span>
+            </div>
+          </div>
+          <div className="bg-hb-emerald/10 text-hb-emerald px-3 py-1 rounded-full border border-hb-emerald/20 text-[10px] font-black uppercase tracking-tight">
+            Live
+          </div>
+        </div>
+
+        {/* Win Calculator / Stats Row */}
+        <div className="flex flex-col gap-1 bg-black/30 p-3 rounded-lg mt-1">
+           <div className="flex justify-between text-[11px] leading-relaxed">
+              <span className="font-bold text-hb-muted">BET:</span>
+              <span className="font-mono text-white">{betAmount} ETB</span>
+           </div>
+           
+           <div className="flex justify-between text-[11px] leading-relaxed">
+              <span className="font-bold text-hb-muted">PLAYERS:</span>
+              <span className="font-mono text-white">{playerCount}</span>
+           </div>
+
+           <div className="flex justify-between text-[11px] leading-relaxed">
+              <span className="font-bold text-hb-emerald">POSSIBLE WIN:</span>
+              <span className="font-mono font-bold text-hb-emerald">
+                {possibleWin.toLocaleString()} ETB
+                <span className="text-[9px] text-hb-muted ml-1 font-normal">(after 20% fee)</span>
+              </span>
+           </div>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 const GameView: React.FC<GameViewProps> = ({ cardIds, betAmount, mode, user, setUser, matchStartTime, onClose }) => {
   const [gameState, setGameState] = useState<'matchmaking' | 'playing' | 'finished'>('matchmaking');
@@ -42,14 +124,14 @@ const GameView: React.FC<GameViewProps> = ({ cardIds, betAmount, mode, user, set
   
   const callInterval = useRef<number | null>(null);
 
-  // --- Core Game Logic ---
+  // Mock player count based on pool size or simple random
+  const playerCount = useMemo(() => Math.floor(Math.random() * 50) + 12, []);
 
-  // Calculate the total pot available to win (Net after 20% Fee)
-  // Logic: (Stake Per Card * Num Cards * 2 Players) * (1 - 0.20 Fee)
-  const sessionPot = useMemo(() => {
-    const totalRawStake = betAmount * cardIds.length * 2;
-    return Math.floor(totalRawStake * (1 - APP_CONFIG.GAME.HOUSE_FEE_PERCENT));
-  }, [betAmount, cardIds.length]);
+  // Calculate the total pot available using the backend logic helper
+  const { winnerPayout: sessionPot } = useMemo(() => {
+    const totalPool = betAmount * playerCount;
+    return calculateWinnerPayout(totalPool);
+  }, [betAmount, playerCount]);
 
   const checkWinForCard = useCallback((id: number, currentMarked: Set<number>) => {
     const grid = allCardsData.current[id];
@@ -93,26 +175,21 @@ const GameView: React.FC<GameViewProps> = ({ cardIds, betAmount, mode, user, set
   const completeGameSession = async (status: 'won' | 'lost' | 'abandoned', payout: number, winCards: number[] = []) => {
     if (callInterval.current) clearInterval(callInterval.current);
     
-    // 1. Calculate new stats
     const userStake = betAmount * cardIds.length;
     const newBalance = user.balance + payout;
     const newWins = status === 'won' ? user.wins + 1 : user.wins;
 
-    // 2. Local State Updates
     setWinnings(payout);
     setWinningCardIds(winCards);
     setWinner(status === 'won' ? user.username : (status === 'abandoned' ? 'SURRENDER' : 'HOUSE'));
     setGameState('finished');
     
-    // 3. Update User Balance (Optimistic)
     if (status === 'won') {
        setUser(prev => ({ ...prev, balance: newBalance, wins: newWins }));
     }
 
-    // 4. Persist to Database (History & Profile)
     if (user.id !== 'guest') {
        try {
-         // Update Profile if won
          if (status === 'won') {
            await supabase
             .from('profiles')
@@ -120,7 +197,6 @@ const GameView: React.FC<GameViewProps> = ({ cardIds, betAmount, mode, user, set
             .eq('id', user.id);
          }
 
-         // Insert Game History
          await supabase.from('game_history').insert({
             user_id: user.id,
             game_mode: mode,
@@ -128,7 +204,7 @@ const GameView: React.FC<GameViewProps> = ({ cardIds, betAmount, mode, user, set
             stake: userStake,
             payout: payout,
             status: status,
-            called_numbers: drawnNumbers // Saves the sequence called so far
+            called_numbers: drawnNumbers
          });
        } catch (err) {
          console.error("Failed to save game history:", err);
@@ -138,18 +214,18 @@ const GameView: React.FC<GameViewProps> = ({ cardIds, betAmount, mode, user, set
 
   const handleCallBingo = useCallback(async () => {
     if (!isAnyWinning) {
-      // False Bingo -> Loss
       completeGameSession('lost', 0);
       return;
     }
-    
-    // Win Amount is the Session Pot (which already has 20% deducted)
-    completeGameSession('won', sessionPot, winningCardsList);
-  }, [isAnyWinning, sessionPot, winningCardsList, drawnNumbers]);
+    // Final check using strict payout calculation
+    const totalPool = betAmount * playerCount;
+    const { winnerPayout } = calculateWinnerPayout(totalPool);
+    completeGameSession('won', winnerPayout, winningCardsList);
+  }, [isAnyWinning, betAmount, playerCount, winningCardsList, drawnNumbers, cardIds.length]);
 
   const handleLeaveMatch = async () => {
      await completeGameSession('abandoned', 0);
-     onClose(); // Proceed to close UI
+     onClose(); 
   };
 
   // --- Effects ---
@@ -202,6 +278,8 @@ const GameView: React.FC<GameViewProps> = ({ cardIds, betAmount, mode, user, set
 
   // Manual Click
   const handleManualDaub = (cardId: number, num: number) => {
+    // Allows marking during play; during matchmaking cards are visible but interaction is usually disabled or irrelevant
+    if (gameState !== 'playing') return; 
     if (num === 0) return;
     if (!drawnNumbers.includes(num)) return;
     setMarkedByCard(prev => {
@@ -216,15 +294,23 @@ const GameView: React.FC<GameViewProps> = ({ cardIds, betAmount, mode, user, set
     if (gameState === 'playing') {
       const poolSize = mode === 'mini' ? 30 : 75;
       const pool = Array.from({ length: poolSize }, (_, i) => i + 1);
-      const shuffled = [...pool].sort(() => Math.random() - 0.5);
+      
+      // Seeded shuffle for fairness simulation (based on match start)
+      let seed = matchStartTime;
+      const seededRandom = () => {
+          const x = Math.sin(seed++) * 10000;
+          return x - Math.floor(x);
+      };
+      
+      const shuffled = [...pool].sort(() => seededRandom() - 0.5);
+      
       let idx = 0;
       const intervalMs = mode === 'mini' ? APP_CONFIG.GAME.CALL_INTERVAL_MINI_MS : APP_CONFIG.GAME.CALL_INTERVAL_CLASSIC_MS;
 
       callInterval.current = window.setInterval(() => {
         if (idx >= poolSize) {
-          // Pool Exhausted -> Draw/Loss
           if (callInterval.current) clearInterval(callInterval.current);
-          completeGameSession('lost', 0); // Treated as loss if no one bingoed
+          completeGameSession('lost', 0);
           return;
         }
         const num = shuffled[idx++];
@@ -254,155 +340,131 @@ const GameView: React.FC<GameViewProps> = ({ cardIds, betAmount, mode, user, set
     return { current: max, total: size };
   };
 
+  const lastCalledNumber = drawnNumbers.length > 0 ? drawnNumbers[drawnNumbers.length - 1] : null;
+
   return (
-    <div className="min-h-full flex flex-col items-center pt-4 px-2 pb-20">
+    <div className="min-h-full flex flex-col items-center pt-4 px-2 pb-20 relative">
+      <BingoAudioController currentNumber={lastCalledNumber} />
+
+      {/* MATCHMAKING OVERLAY (Cards are visible underneath) */}
       {gameState === 'matchmaking' && (
-        <div className="w-full flex flex-col items-center animate-in fade-in duration-500">
-          <div className="bg-white p-6 rounded-[24px] shadow-lg flex flex-col items-center justify-center text-center w-full max-w-[340px] border border-hb-border mb-4">
-            <div className="flex items-center gap-3 mb-4">
-               <div className="w-10 h-10 border-[4px] border-hb-blue border-t-hb-gold rounded-full animate-spin"></div>
-               <div className="text-left">
-                  <h3 className="text-[16px] font-black text-hb-navy uppercase tracking-tight leading-none">Arena Initialization</h3>
-                  <p className="text-[11px] text-hb-muted font-bold uppercase mt-1">Match will start always</p>
-               </div>
+        <div className="w-full flex flex-col items-center animate-in fade-in duration-500 mb-4 z-10 relative">
+          <div className="bg-white p-4 rounded-[24px] shadow-xl flex flex-col items-center justify-center text-center w-full max-w-[340px] border-2 border-hb-gold/50 relative overflow-hidden">
+            <div className="absolute top-0 left-0 w-full h-1 bg-hb-gold animate-pulse"></div>
+            <div className="flex items-center gap-3 mb-2">
+               <div className="w-6 h-6 border-[3px] border-hb-blue border-t-hb-gold rounded-full animate-spin"></div>
+               <h3 className="text-[14px] font-black text-hb-navy uppercase tracking-tight">Game Starting</h3>
             </div>
-            <div className="flex items-center gap-3 bg-hb-bg px-5 py-3 rounded-2xl border border-hb-border w-full justify-center">
-              <span className="text-[12px] font-black text-hb-muted uppercase">Engine Launch:</span>
-              <span className="text-[24px] font-black text-hb-gold tabular-nums tracking-tighter">{countdown}s</span>
+            <p className="text-[10px] text-hb-muted font-bold uppercase mb-3">Cards Locked • Waiting for Players</p>
+            <div className="flex items-center gap-2 bg-hb-bg px-4 py-2 rounded-xl border border-hb-border">
+              <span className="text-[10px] font-black text-hb-muted uppercase">Starting In:</span>
+              <span className="text-[18px] font-black text-hb-gold tabular-nums">{countdown}s</span>
             </div>
-          </div>
-          
-          <div className="w-full mb-2 max-w-[400px]">
-             <div className="flex items-center gap-2 mb-3 px-2">
-                <i className="fas fa-microchip text-hb-blue text-[10px]"></i>
-                <span className="text-[9px] font-black uppercase text-hb-muted tracking-widest">Seeding Secure Match Deck</span>
-             </div>
-             <div className="grid grid-cols-2 gap-2 w-full max-h-[50vh] overflow-y-auto no-scrollbar pb-6 px-1">
-               {cardIds.map(id => (
-                  <div key={id} className="bg-white p-2 rounded-xl border border-hb-border shadow-sm relative overflow-hidden group">
-                     <div className="flex justify-between items-center mb-1">
-                        <span className="text-[8px] font-black text-hb-navy bg-hb-bg px-1.5 py-0.5 rounded-md border border-hb-border">ID #{id}</span>
-                        <div className="w-2 h-2 rounded-full bg-hb-emerald animate-pulse"></div>
-                     </div>
-                     <div className={`grid ${mode === 'mini' ? 'grid-cols-3' : 'grid-cols-5'} gap-0.5 opacity-40 group-hover:opacity-100 transition-opacity`}>
-                        {allCardsData.current[id].flat().map((n, i) => (
-                           <div key={i} className={`aspect-square flex items-center justify-center text-[7px] font-black rounded-sm ${n===0 ? 'bg-hb-emerald/10 text-hb-emerald' : 'bg-[#1E1E1E] text-white border border-white/10'}`}>
-                             {n===0 ? '★' : n}
-                           </div>
-                        ))}
-                     </div>
-                  </div>
-               ))}
-             </div>
           </div>
         </div>
       )}
 
-      {gameState === 'playing' && (
-        <div className="w-full max-w-[440px] animate-in slide-in-from-bottom-5 duration-500">
-          <div className="flex justify-between items-center mb-4 bg-white px-5 py-4 rounded-3xl shadow-sm border border-hb-border mx-2">
-            <div className="flex flex-col">
-              <span className="text-[10px] font-black text-hb-muted uppercase tracking-widest mb-1">Session Pot</span>
-              <span className="text-[22px] font-black text-hb-emerald leading-none">
-                {sessionPot.toLocaleString()} <span className="text-[12px] opacity-60">ETB</span>
-              </span>
-              <span className="text-[8px] font-bold text-hb-muted uppercase tracking-tighter mt-1">20% Fee Applied</span>
-            </div>
-            <div className="bg-hb-navy text-white px-4 py-2 rounded-2xl flex items-center gap-2 shadow-lg">
-               <i className="fas fa-server text-[10px] text-hb-gold animate-pulse"></i>
-               <span className="text-[11px] font-black uppercase tracking-tight">Live Server</span>
-            </div>
-          </div>
+      {/* GAME CONTENT (Visible during matchmaking and playing) */}
+      <div className={`w-full max-w-[440px] flex flex-col items-center transition-opacity duration-500 ${gameState === 'matchmaking' ? 'opacity-50 pointer-events-none grayscale-[0.5]' : 'opacity-100'}`}>
+        
+        <BingoStats 
+          betAmount={betAmount} 
+          playerCount={playerCount} 
+          possibleWin={sessionPot} 
+          balance={user.balance} 
+        />
 
-          <div className="flex items-center gap-3 mb-8 justify-center h-[60px]">
-             {drawnNumbers.length > 0 ? (
-               <div className="flex flex-col items-center animate-in zoom-in-50 duration-300">
-                  <div className="text-[32px] font-black text-hb-blueblack px-8 py-2 bg-hb-gold rounded-2xl border-[3px] border-white shadow-xl scale-110 relative">
-                    {drawnNumbers[drawnNumbers.length - 1]}
-                    <div className="absolute -top-2 -right-2 w-5 h-5 bg-hb-blue text-white text-[9px] rounded-full flex items-center justify-center border border-white">
-                      {drawnNumbers.length}
-                    </div>
+        {/* Drawn Number Display */}
+        <div className="flex items-center gap-3 mb-8 justify-center h-[60px]">
+           {lastCalledNumber ? (
+             <div className="flex flex-col items-center animate-in zoom-in-50 duration-300">
+                <div className="text-[32px] font-black text-hb-blueblack px-8 py-2 bg-hb-gold rounded-2xl border-[3px] border-white shadow-xl scale-110 relative">
+                  {lastCalledNumber}
+                  <div className="absolute -top-2 -right-2 w-5 h-5 bg-hb-blue text-white text-[9px] rounded-full flex items-center justify-center border border-white">
+                    {drawnNumbers.length}
                   </div>
-                  <div className="text-[9px] font-black text-hb-muted uppercase tracking-[0.3em] mt-3 opacity-40 italic">Sequential Call Active</div>
-               </div>
-             ) : (
-               <div className="flex items-center gap-2">
-                  <div className="w-3 h-3 bg-hb-gold rounded-full animate-bounce"></div>
-                  <span className="text-hb-muted italic text-[14px] uppercase tracking-[0.2em] font-black">Syncing Draw Feed...</span>
-               </div>
-             )}
-          </div>
-
-          <div className="px-3 mb-3 flex items-center justify-between">
-            <span className="text-[11px] font-black text-hb-navy uppercase tracking-widest italic">In-Game Deck</span>
-            <button 
-              onClick={() => setIsAutoPlay(!isAutoPlay)}
-              className={`flex items-center gap-2.5 px-4 py-2 rounded-full border-2 transition-all ${isAutoPlay ? 'bg-hb-emerald text-white border-white/20 shadow-md scale-105' : 'bg-white text-hb-muted border-hb-border'}`}
-            >
-              <i className={`fas ${isAutoPlay ? 'fa-robot' : 'fa-hand-pointer'} text-[12px]`}></i>
-              <span className="text-[11px] font-black uppercase tracking-tighter">{isAutoPlay ? 'Auto-Daub On' : 'Manual Mode'}</span>
-            </button>
-          </div>
-
-          <div className={`grid ${cardIds.length > 1 ? 'grid-cols-2' : 'grid-cols-1'} gap-3 px-2`}>
-            {cardIds.map((id) => {
-              const progress = getCardProgress(id);
-              const isWinning = checkWinForCard(id, markedByCard[id]);
-              return (
-                <div key={id} className={`bg-white p-2.5 rounded-[22px] border transition-all duration-300 shadow-lg relative overflow-hidden flex flex-col h-fit
-                  ${isWinning ? 'ring-4 ring-hb-gold scale-[1.03] border-hb-gold z-10' : 'border-hb-border opacity-95'}`}>
-                  <div className="flex justify-between items-center mb-2 px-1">
-                    <span className="text-[10px] font-black text-hb-navy tracking-tight">#{id} <span className="text-[8px] opacity-40">CARTELLA</span></span>
-                    <div className="flex items-center gap-1.5">
-                      <div className="w-12 h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                        <div 
-                          className="h-full bg-hb-blue transition-all duration-500" 
-                          style={{ width: `${(progress.current / progress.total) * 100}%` }}
-                        />
-                      </div>
-                      <span className="text-[8px] font-black text-hb-muted">{progress.current}/{progress.total}</span>
-                    </div>
-                  </div>
-                  <div className={`grid ${mode === 'mini' ? 'grid-cols-3' : 'grid-cols-5'} gap-1 justify-items-center`}>
-                    {allCardsData.current[id].flat().map((num, i) => (
-                      <div 
-                        key={i} 
-                        onClick={() => handleManualDaub(id, num)}
-                        className={`aspect-square w-full flex items-center justify-center rounded-lg font-black text-[11px] transition-all duration-300 cursor-pointer select-none
-                        ${num === 0 ? 'bg-hb-emerald/10 text-hb-emerald border-2 border-hb-emerald/10' : 
-                          markedByCard[id].has(num) 
-                            ? 'bg-hb-gold text-hb-blueblack border-2 border-hb-gold shadow-lg scale-105' 
-                            : 'bg-[#1E1E1E] text-white border border-white/10 hover:border-hb-gold/50 active:scale-90'}`}
-                      >
-                        {num === 0 ? '★' : num}
-                      </div>
-                    ))}
-                  </div>
-                  {isWinning && (
-                    <div className="absolute inset-0 bg-hb-gold/15 flex items-center justify-center pointer-events-none backdrop-blur-[1px] animate-pulse">
-                       <div className="bg-hb-gold text-hb-blueblack text-[12px] font-black px-4 py-1.5 rounded-full shadow-2xl uppercase tracking-widest border-2 border-hb-blueblack/20">
-                         WINNER!
-                       </div>
-                    </div>
-                  )}
                 </div>
-              );
-            })}
-          </div>
-
-          <div className="mt-10 px-3 flex flex-col gap-4">
-            <button 
-              onClick={handleCallBingo}
-              disabled={isAutoPlay && isAnyWinning} 
-              className={`w-full h-[76px] rounded-[28px] font-black text-[26px] shadow-2xl transition-all uppercase tracking-tight border-b-[6px] flex items-center justify-center gap-4 active:scale-95 bg-hb-gold border-[#d97706] text-hb-blueblack hover:brightness-110 ${isAutoPlay && isAnyWinning ? 'opacity-50 grayscale cursor-not-allowed' : ''}`}
-            >
-              <i className="fas fa-crown text-[20px]"></i>
-              {isAutoPlay && isAnyWinning ? 'Processing...' : 'BINGO!'}
-            </button>
-            <button onClick={handleLeaveMatch} className="text-[11px] font-black text-hb-muted uppercase tracking-[0.4em] hover:text-red-500 py-3 transition-colors">Leave Match</button>
-          </div>
+                <div className="text-[9px] font-black text-hb-muted uppercase tracking-[0.3em] mt-3 opacity-40 italic">Sequential Call Active</div>
+             </div>
+           ) : (
+             <div className="flex items-center gap-2">
+                <div className="w-3 h-3 bg-hb-gold rounded-full animate-bounce"></div>
+                <span className="text-hb-muted italic text-[14px] uppercase tracking-[0.2em] font-black">Syncing Draw Feed...</span>
+             </div>
+           )}
         </div>
-      )}
+
+        {/* Controls */}
+        <div className="w-full px-3 mb-3 flex items-center justify-between">
+          <span className="text-[11px] font-black text-hb-navy uppercase tracking-widest italic">In-Game Deck</span>
+          <button 
+            onClick={() => setIsAutoPlay(!isAutoPlay)}
+            className={`flex items-center gap-2.5 px-4 py-2 rounded-full border-2 transition-all ${isAutoPlay ? 'bg-hb-emerald text-white border-white/20 shadow-md scale-105' : 'bg-white text-hb-muted border-hb-border'}`}
+          >
+            <i className={`fas ${isAutoPlay ? 'fa-robot' : 'fa-hand-pointer'} text-[12px]`}></i>
+            <span className="text-[11px] font-black uppercase tracking-tighter">{isAutoPlay ? 'Auto-Daub On' : 'Manual Mode'}</span>
+          </button>
+        </div>
+
+        {/* The Cards Grid */}
+        <div className={`grid ${cardIds.length > 1 ? 'grid-cols-2' : 'grid-cols-1'} gap-3 px-2 w-full`}>
+          {cardIds.map((id) => {
+            const progress = getCardProgress(id);
+            const isWinning = checkWinForCard(id, markedByCard[id]);
+            return (
+              <div key={id} className={`bg-white p-2.5 rounded-[22px] border transition-all duration-300 shadow-lg relative overflow-hidden flex flex-col h-fit
+                ${isWinning ? 'ring-4 ring-hb-gold scale-[1.03] border-hb-gold z-10' : 'border-hb-border opacity-95'}`}>
+                <div className="flex justify-between items-center mb-2 px-1">
+                  <span className="text-[10px] font-black text-hb-navy tracking-tight">#{id} <span className="text-[8px] opacity-40">CARTELLA</span></span>
+                  <div className="flex items-center gap-1.5">
+                    <div className="w-12 h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                      <div 
+                        className="h-full bg-hb-blue transition-all duration-500" 
+                        style={{ width: `${(progress.current / progress.total) * 100}%` }}
+                      />
+                    </div>
+                    <span className="text-[8px] font-black text-hb-muted">{progress.current}/{progress.total}</span>
+                  </div>
+                </div>
+                <div className={`grid ${mode === 'mini' ? 'grid-cols-3' : 'grid-cols-5'} gap-1 justify-items-center`}>
+                  {allCardsData.current[id].flat().map((num, i) => (
+                    <div 
+                      key={i} 
+                      onClick={() => handleManualDaub(id, num)}
+                      className={`aspect-square w-full flex items-center justify-center rounded-lg font-black text-[11px] transition-all duration-300 cursor-pointer select-none
+                      ${num === 0 ? 'bg-hb-emerald/10 text-hb-emerald border-2 border-hb-emerald/10' : 
+                        markedByCard[id].has(num) 
+                          ? 'bg-hb-gold text-hb-blueblack border-2 border-hb-gold shadow-lg scale-105' 
+                          : 'bg-[#1E1E1E] text-white border border-white/10 hover:border-hb-gold/50 active:scale-90'}`}
+                    >
+                      {num === 0 ? '★' : num}
+                    </div>
+                  ))}
+                </div>
+                {isWinning && (
+                  <div className="absolute inset-0 bg-hb-gold/15 flex items-center justify-center pointer-events-none backdrop-blur-[1px] animate-pulse">
+                     <div className="bg-hb-gold text-hb-blueblack text-[12px] font-black px-4 py-1.5 rounded-full shadow-2xl uppercase tracking-widest border-2 border-hb-blueblack/20">
+                       WINNER!
+                     </div>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+
+        <div className="mt-8 px-3 flex flex-col gap-4 w-full">
+          <button 
+            onClick={handleCallBingo}
+            disabled={isAutoPlay && isAnyWinning} 
+            className={`w-full h-[76px] rounded-[28px] font-black text-[26px] shadow-2xl transition-all uppercase tracking-tight border-b-[6px] flex items-center justify-center gap-4 active:scale-95 bg-hb-gold border-[#d97706] text-hb-blueblack hover:brightness-110 ${isAutoPlay && isAnyWinning ? 'opacity-50 grayscale cursor-not-allowed' : ''}`}
+          >
+            <i className="fas fa-crown text-[20px]"></i>
+            {isAutoPlay && isAnyWinning ? 'Processing...' : 'BINGO!'}
+          </button>
+          <button onClick={handleLeaveMatch} className="text-[11px] font-black text-hb-muted uppercase tracking-[0.4em] hover:text-red-500 py-3 transition-colors">Leave Match</button>
+        </div>
+      </div>
 
       {gameState === 'finished' && (
         <div className="fixed inset-0 z-[100] bg-hb-navy flex flex-col items-center justify-center p-8 text-center animate-in fade-in duration-500">
@@ -413,22 +475,35 @@ const GameView: React.FC<GameViewProps> = ({ cardIds, betAmount, mode, user, set
              </div>
            </div>
            
-           <div className="mb-10">
+           <div className="mb-6">
              <h2 className="text-[40px] font-black italic tracking-tighter uppercase leading-tight text-white">
                {winner === user.username ? 'LEGENDARY!' : 'TOUGH LUCK'}
              </h2>
              <div className="text-[18px] font-black text-hb-gold mt-2 uppercase tracking-widest">{winner}</div>
            </div>
 
+           {/* Winning Card Display */}
+           {winningCardIds.length > 0 && (
+              <div className="mb-6 animate-in zoom-in slide-in-from-bottom-5">
+                 <div className="text-[10px] font-black text-hb-muted uppercase tracking-widest mb-2">Winning Combination</div>
+                 <div className="bg-white p-2 rounded-xl border-4 border-hb-gold shadow-2xl inline-block">
+                    <div className={`grid ${mode === 'mini' ? 'grid-cols-3' : 'grid-cols-5'} gap-1 w-[140px]`}>
+                      {allCardsData.current[winningCardIds[0]].flat().map((num, i) => (
+                        <div key={i} className={`aspect-square flex items-center justify-center text-[9px] font-black rounded ${markedByCard[winningCardIds[0]].has(num) || num === 0 ? 'bg-hb-gold text-hb-blueblack' : 'bg-hb-bg text-hb-muted'}`}>
+                          {num === 0 ? '★' : num}
+                        </div>
+                      ))}
+                    </div>
+                    <div className="mt-1 text-[9px] font-black text-hb-navy uppercase">Card #{winningCardIds[0]}</div>
+                 </div>
+              </div>
+           )}
+
            <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-[40px] p-8 w-full max-w-[340px] shadow-2xl mb-12">
               <div className="text-[12px] font-black text-white/40 uppercase tracking-[0.3em] mb-6 border-b border-white/5 pb-3 italic">Match Analytics</div>
               <div className="flex justify-between items-center mb-6">
-                 <span className="text-[14px] font-bold text-white/60">Winning Cartellas:</span>
-                 <div className="flex gap-2">
-                    {winningCardIds.length > 0 ? winningCardIds.map(id => (
-                      <span key={id} className="bg-hb-gold text-hb-blueblack text-[12px] font-black px-3 py-1.5 rounded-xl shadow-lg">#{id}</span>
-                    )) : <span className="text-red-400 font-black text-[12px] uppercase tracking-widest">NONE</span>}
-                 </div>
+                 <span className="text-[14px] font-bold text-white/60">House Fee (20%):</span>
+                 <span className="text-[14px] font-bold text-red-400">-{Math.floor(betAmount * playerCount * APP_CONFIG.GAME.HOUSE_FEE_PERCENT).toLocaleString()} ETB</span>
               </div>
               <div className="flex justify-between items-center pt-2">
                  <span className="text-[14px] font-bold text-white/60">Final Payout:</span>
@@ -437,7 +512,7 @@ const GameView: React.FC<GameViewProps> = ({ cardIds, betAmount, mode, user, set
            </div>
 
            <button onClick={onClose} className="w-full max-w-[280px] h-[64px] bg-white text-hb-navy font-black rounded-3xl shadow-2xl active:scale-95 uppercase tracking-widest text-[16px] hover:bg-hb-gold hover:text-white transition-all">
-             Return Home
+             Play Again
            </button>
         </div>
       )}

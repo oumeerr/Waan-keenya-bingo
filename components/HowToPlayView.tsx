@@ -1,4 +1,3 @@
-
 import React from 'react';
 
 const HowToPlayView: React.FC = () => {
@@ -18,7 +17,7 @@ const HowToPlayView: React.FC = () => {
           />
           <Step 
             num="2" 
-            title="Arena Stakes" 
+            title="Game Stakes" 
             desc="Confirm your stake (5 - 1000 ETB). Once the countdown begins, the game is guaranteed to start instantly." 
           />
           <Step 
