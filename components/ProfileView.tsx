@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { User } from '../types';
 import { supabase } from '../services/supabase';
@@ -114,4 +113,3 @@ const ProfileView: React.FC<ProfileViewProps> = ({ user, setUser }) => {
 };
 
 export default ProfileView;
-    
