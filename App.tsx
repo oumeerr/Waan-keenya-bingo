@@ -199,7 +199,7 @@ const App: React.FC = () => {
             </div>
             
             <div className="flex flex-col items-center gap-1.5 flex-1">
-              <span className="font-black text-xl italic tracking-tighter text-white">HULUMBINGO</span>
+              <span className="font-black text-xl italic tracking-tighter text-white">WAAN KEENYA BINGO</span>
               <div className="bg-hb-gold text-hb-blueblack px-3 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-tighter shadow-sm">
                 10k Weekly Prize Pool
               </div>

@@ -6,7 +6,7 @@ const HowToPlayView: React.FC = () => {
     <div className="p-6 pb-20">
       <div className="mb-8">
         <h2 className="text-2xl font-black text-hb-blue mb-1 italic tracking-tight uppercase">Master Guide</h2>
-        <p className="text-[11px] text-hb-muted font-bold uppercase tracking-widest">Master the Hulumbingo Engine</p>
+        <p className="text-[11px] text-hb-muted font-bold uppercase tracking-widest">Master the Waan Keenya Bingo Engine</p>
       </div>
       
       <div className="space-y-8">

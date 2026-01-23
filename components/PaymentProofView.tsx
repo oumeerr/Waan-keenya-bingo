@@ -14,7 +14,7 @@ const PaymentProofView: React.FC = () => {
   const [notes, setNotes] = useState('');
   const [isUploading, setIsUploading] = useState(false);
   const [messages, setMessages] = useState<Message[]>([
-    { role: 'model', text: 'Welcome to Hulumbingo Support! How can I help you today? You can ask about deposits, withdrawals, or how to upload your payment proof.' }
+    { role: 'model', text: 'Welcome to Waan Keenya Bingo Support! How can I help you today? You can ask about deposits, withdrawals, or how to upload your payment proof.' }
   ]);
   const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
@@ -60,7 +60,7 @@ const PaymentProofView: React.FC = () => {
 
     try {
       const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-      const systemInstruction = `You are a helpful support agent for Hulumbingo (HB), a betting app.
+      const systemInstruction = `You are a helpful support agent for Waan Keenya Bingo, a betting app.
       Key Info:
       - We accept Telebirr, CBE Birr, E-Birr, Kacha.
       - Minimum Deposit: 30 ETB.

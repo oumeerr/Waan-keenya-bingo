@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 
 const SettingsView: React.FC = () => {
@@ -46,7 +47,7 @@ const SettingsView: React.FC = () => {
             </div>
              <div className="flex justify-between items-center p-3 bg-hb-bg rounded-xl border border-hb-border/50">
                <span className="font-bold text-hb-navy text-sm">Build ID</span>
-               <span className="font-black text-hb-muted text-xs uppercase tracking-wide">HB-2024-PRO</span>
+               <span className="font-black text-hb-muted text-xs uppercase tracking-wide">WKB-2024-PRO</span>
             </div>
             <button className="w-full py-4 bg-hb-bg border border-hb-border rounded-xl text-xs font-black text-hb-navy uppercase mt-2 hover:bg-hb-blue hover:text-white transition-colors">
                Terms of Service

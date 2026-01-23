@@ -113,6 +113,9 @@ const Sidebar: React.FC<SidebarProps> = ({ user, onClose, onNavigate, currentLan
                 <i className="fas fa-shield-alt"></i>
               </div>
            </div>
+           <div className="text-center">
+              <span className="text-[8px] font-black text-hb-muted uppercase tracking-widest opacity-30">WKB-2024-PRO</span>
+           </div>
         </div>
       </div>
     </div>

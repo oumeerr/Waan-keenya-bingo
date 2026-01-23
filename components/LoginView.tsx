@@ -97,13 +97,13 @@ const LoginView: React.FC<LoginViewProps> = ({ onLogin }) => {
              onError={(e) => {
                e.currentTarget.style.display = 'none';
                e.currentTarget.parentElement!.classList.add('bg-gradient-to-br', 'from-[#22C55E]', 'to-[#166534]');
-               e.currentTarget.parentElement!.innerHTML = '<span class="text-7xl font-black text-white italic drop-shadow-md">H</span>';
+               e.currentTarget.parentElement!.innerHTML = '<span class="text-7xl font-black text-white italic drop-shadow-md">W</span>';
              }}
            />
         </div>
 
         <h1 className="text-3xl font-black text-white italic tracking-tighter uppercase mb-2">
-          Hulumbingo
+          Waan Keenya Bingo
         </h1>
         <p className="text-hb-muted text-sm font-medium mb-8 max-w-[260px] leading-relaxed">
           The premium competitive bingo arena. <br/> Win weekly cash prizes securely.
