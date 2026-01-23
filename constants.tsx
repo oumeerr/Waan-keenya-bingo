@@ -135,4 +135,3 @@ export const generateMiniCard = (id: number): number[][] => {
   }
   return card;
 };
-    
