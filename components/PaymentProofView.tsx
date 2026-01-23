@@ -1,6 +1,6 @@
 
 import React, { useState, useRef, useEffect } from 'react';
-import { GoogleGenAI } from "@google/genai";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 
 interface Message {
   role: 'user' | 'model';
@@ -59,27 +59,28 @@ const PaymentProofView: React.FC = () => {
     setIsTyping(true);
 
     try {
-      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-      const systemInstruction = `You are a helpful support agent for Waan Keenya Bingo, a betting app.
-      Key Info:
-      - We accept Telebirr, CBE Birr, E-Birr, Kacha.
-      - Minimum Deposit: 30 ETB.
-      - Minimum Withdrawal: 100 ETB.
-      - Withdrawal Rule: Users must win at least 3 games to unlock withdrawals.
-      - Payment Proof: Users should upload screenshots of their transaction in the 'Upload Proof' tab if deposits are delayed.
-      - Tone: Professional, friendly, energetic.
-      - If users ask about game rules: Mention it's a Bingo game with a 150-card deck and high entropy.
-      - Keep answers concise (under 50 words usually).`;
+      const apiKey = process.env.API_KEY || '';
+      if (!apiKey) {
+        throw new Error('API_KEY not configured');
+      }
+      
+      const ai = new GoogleGenerativeAI(apiKey);
+      const model = ai.getGenerativeModel({ model: 'gemini-pro' });
+      
+      const systemPrompt = `You are a helpful support agent for Waan Keenya Bingo, a betting app.
+Key Info:
+- We accept Telebirr, CBE Birr, E-Birr, Kacha.
+- Minimum Deposit: 30 ETB.
+- Minimum Withdrawal: 100 ETB.
+- Withdrawal Rule: Users must win at least 3 games to unlock withdrawals.
+- Payment Proof: Users should upload screenshots of their transaction in the 'Upload Proof' tab if deposits are delayed.
+- Tone: Professional, friendly, energetic.
+- If users ask about game rules: Mention it's a Bingo game with a 150-card deck and high entropy.
+- Keep answers concise (under 50 words usually).`;
 
-      const response = await ai.models.generateContent({
-        model: 'gemini-3-flash-preview',
-        contents: userMsg,
-        config: {
-          systemInstruction,
-        },
-      });
-
-      const aiText = response.text || "I'm having trouble connecting to the server. Please try again.";
+      const result = await model.generateContent(`${systemPrompt}\n\nUser: ${userMsg}`);
+      const response = await result.response;
+      const aiText = response.text() || "I'm having trouble connecting to the server. Please try again.";
       setMessages(prev => [...prev, { role: 'model', text: aiText }]);
     } catch (error) {
       console.error("Chat Error", error);
