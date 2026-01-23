@@ -114,3 +114,4 @@ const ProfileView: React.FC<ProfileViewProps> = ({ user, setUser }) => {
 };
 
 export default ProfileView;
+    
