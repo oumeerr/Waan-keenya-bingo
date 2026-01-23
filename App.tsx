@@ -18,6 +18,7 @@ import SettingsView from './components/SettingsView';
 import AllCardsView from './components/AllCardsView';
 import PaymentProofView from './components/PaymentProofView';
 import LoginView from './components/LoginView';
+import { SpeedInsights } from '@vercel/speed-insights/react';
 
 const App: React.FC = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -322,6 +323,8 @@ const App: React.FC = () => {
           padding-bottom: env(safe-area-inset-bottom, 0);
         }
       `}</style>
+      
+      <SpeedInsights />
     </div>
   );
 };
