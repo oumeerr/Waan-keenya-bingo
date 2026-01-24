@@ -1,3 +1,4 @@
+
 export const COLORS = {
   primary: '#2563EB',
   action: '#F97316',
@@ -81,19 +82,9 @@ const createRNG = (seed: number) => {
   };
 };
 
-/**
- * Calculates a cycle variable based on the current hour (12-hour cycle).
- * Adds a layer of temporal entropy to the card generation.
- */
-const getCycleProbability = () => {
-  const hour = new Date().getHours();
-  return hour % 12;
-};
-
 export const generateCard = (id: number): number[][] => {
-  // Use a unique salt for classic cards mixed with the time cycle
-  const cycleVar = getCycleProbability();
-  const rng = createRNG(id + 13371337 + cycleVar);
+  // Use a unique salt for classic cards
+  const rng = createRNG(id + 13371337);
   const card: number[][] = Array(5).fill(0).map(() => Array(5).fill(0));
 
   for (let col = 0; col < 5; col++) {
@@ -121,9 +112,8 @@ export const generateCard = (id: number): number[][] => {
 };
 
 export const generateMiniCard = (id: number): number[][] => {
-  // Use a unique salt for mini cards mixed with time cycle
-  const cycleVar = getCycleProbability();
-  const rng = createRNG(id + 777777 + cycleVar);
+  // Use a unique salt for mini cards
+  const rng = createRNG(id + 777777);
   const pool = Array.from({ length: 30 }, (_, i) => i + 1);
 
   // Robust seeded shuffle

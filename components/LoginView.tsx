@@ -15,33 +15,32 @@ const LoginView: React.FC<LoginViewProps> = ({ onLogin }) => {
   const [username, setUsername] = useState('');
   const [phone, setPhone] = useState('');
   const [referralCode, setReferralCode] = useState('');
+  const [tgUser, setTgUser] = useState<any>(null);
+  const [isTelegramEnv, setIsTelegramEnv] = useState(false);
 
   const LOGO_URL = "https://is1-ssl.mzstatic.com/image/thumb/Purple211/v4/4a/6c/2e/4a6c2e37-122e-130f-2169-2810c9d94944/AppIcon-0-0-1x_U007emarketing-0-5-0-85-220.png/512x512bb.jpg";
 
-  // Check for Telegram WebApp User
-  const tgUser = (window as any).Telegram?.WebApp?.initDataUnsafe?.user;
-  const isTelegramEnv = !!tgUser;
-
   useEffect(() => {
-    // If opened in TG, auto-switch to telegram mode for convenience
-    if (isTelegramEnv) {
+    // Safely check for Telegram environment on mount
+    const telegram = (window as any).Telegram?.WebApp;
+    if (telegram?.initDataUnsafe?.user) {
+      setTgUser(telegram.initDataUnsafe.user);
+      setIsTelegramEnv(true);
       setMode('telegram');
+      telegram.expand(); // Expand the webapp to full height
     }
-  }, [isTelegramEnv]);
+  }, []);
 
   const handleTelegramAuth = async () => {
     setLoading(true);
 
     try {
       if (tgUser) {
-        // In a real production app, you would send window.Telegram.WebApp.initData to your backend for secure validation
-        // For this frontend demo, we trust the WebApp context
-        await new Promise(resolve => setTimeout(resolve, 1000)); // Simulating auth delay
-        
-        // Optional: specific logic to sync TG user with Supabase could go here
+        // In production: Validate telegram.initData via backend
+        await new Promise(resolve => setTimeout(resolve, 1000)); 
         onLogin();
       } else {
-        throw new Error("Telegram account not detected.");
+        throw new Error("Telegram account not detected. Please open this app from Telegram.");
       }
     } catch (error: any) {
       console.error("Login Error:", error);
@@ -83,7 +82,6 @@ const LoginView: React.FC<LoginViewProps> = ({ onLogin }) => {
         alert("Registration Complete. Please Login.");
         setMode('login');
       } else {
-        // Determine if input is email or phone for login
         const isPhone = /^[0-9+]+$/.test(email);
         const loginPayload = isPhone ? { phone: email, password } : { email, password };
 
@@ -91,7 +89,7 @@ const LoginView: React.FC<LoginViewProps> = ({ onLogin }) => {
         
         if (error) {
            if (error.message.includes('Invalid login') || error.message.includes('credential')) {
-             throw new Error("Invalid password or email / phone. Please enter correct password or phone number.");
+             throw new Error("Invalid password or credentials.");
            }
            throw error;
         }
@@ -106,12 +104,9 @@ const LoginView: React.FC<LoginViewProps> = ({ onLogin }) => {
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen p-6 bg-hb-bg relative overflow-hidden">
-      {/* Background Decor */}
       <div className="absolute top-[-20%] left-[-20%] w-[140%] h-[60%] bg-gradient-to-b from-green-900/20 to-transparent rounded-full blur-3xl pointer-events-none"></div>
       
       <div className="z-10 flex flex-col items-center text-center w-full max-w-sm">
-        
-        {/* Logo Section */}
         <div className="w-28 h-28 bg-white rounded-[2.5rem] shadow-[0_20px_40px_-10px_rgba(34,197,94,0.4)] flex items-center justify-center mb-6 relative overflow-hidden border-4 border-white/10">
            <img 
              src={LOGO_URL} 
@@ -131,7 +126,6 @@ const LoginView: React.FC<LoginViewProps> = ({ onLogin }) => {
           The premium competitive bingo game. <br/> Win weekly cash prizes securely.
         </p>
 
-        {/* Mode Switcher */}
         <div className="w-full bg-hb-surface border border-hb-border p-6 rounded-[24px] shadow-lg mb-6">
           <div className="flex bg-[#121212] p-1 rounded-xl mb-6 overflow-hidden">
              <button 
@@ -141,7 +135,6 @@ const LoginView: React.FC<LoginViewProps> = ({ onLogin }) => {
                Login
              </button>
              
-             {/* Only show Telegram Tab if in Telegram Environment */}
              {isTelegramEnv && (
                <button 
                  onClick={() => setMode('telegram')}
@@ -160,7 +153,6 @@ const LoginView: React.FC<LoginViewProps> = ({ onLogin }) => {
           </div>
 
           <div className="space-y-4">
-             {/* Telegram Login Mode (Only if tgUser exists) */}
              {mode === 'telegram' && isTelegramEnv && tgUser && (
                <div className="space-y-4 animate-in fade-in zoom-in duration-300">
                   <div className="bg-[#1A1A1A] p-4 rounded-xl border border-[#24A1DE]/30 text-center">
@@ -187,7 +179,6 @@ const LoginView: React.FC<LoginViewProps> = ({ onLogin }) => {
                </div>
              )}
 
-             {/* Signup Mode */}
              {mode === 'signup' && (
                <div className="animate-in fade-in zoom-in duration-300">
                  <div className="space-y-4">
@@ -225,7 +216,6 @@ const LoginView: React.FC<LoginViewProps> = ({ onLogin }) => {
                </div>
              )}
 
-             {/* Email/Pass Fields (Shared by Login and Signup) */}
              {mode !== 'telegram' && (
                <div className="space-y-4 animate-in fade-in zoom-in duration-300">
                  <div className="space-y-1 text-left">
@@ -264,7 +254,6 @@ const LoginView: React.FC<LoginViewProps> = ({ onLogin }) => {
           </div>
         </div>
 
-        {/* Telegram Shortcut Button (Only if in TG env but currently in a different mode) */}
         {isTelegramEnv && mode !== 'telegram' && (
           <button 
             onClick={() => { setMode('telegram'); }}
